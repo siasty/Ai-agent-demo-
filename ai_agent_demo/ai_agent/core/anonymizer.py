@@ -57,7 +57,6 @@ class EmailAnonymizer(AnonymizationStrategy):
             else:
                 masked = local[0] + "*" * (len(local) - 2) + local[-1]
             return f"{masked}@{domain}"
-
         return re.sub(self._PATTERN, _mask, text)
 
 
@@ -85,7 +84,6 @@ class PeselAnonymizer(AnonymizationStrategy):
         def _mask(match: re.Match) -> str:
             p = match.group()
             return p[:6] + "*" * 5
-
         return re.sub(self._PATTERN, _mask, text)
 
 
@@ -97,7 +95,7 @@ class NameAnonymizer(AnonymizationStrategy):
         "Tomasz", "Agnieszka", "Krzysztof", "Barbara", "Andrzej",
         "Ewa", "Janusz", "Elżbieta", "Stanisław", "Zofia",
         "Michał", "Małgorzata", "Dariusz", "Teresa", "Jan",
-        "Paweł", "Monika", "Grzegorz", "Joanna", "Marta",
+        "Paweł", "Monika", "Grzegorz", "Joanna", "Marta", "Kowalski",
     ]
 
     def get_pattern(self) -> str:
@@ -117,18 +115,17 @@ class DataAnonymizer:
     Główna klasa anonimizacji.
 
     Zarządza zbiorem strategii i aplikuje je w odpowiedniej kolejności.
-    Kolejność ma znaczenie – np. PESEL przed numerem telefonu.
+    Kolejność ma znaczenie – PESEL przed telefonem (oba mają cyfry).
     """
 
-    # Mapowanie nazwy → klasy strategii
     _STRATEGY_MAP: dict[str, type[AnonymizationStrategy]] = {
         "email": EmailAnonymizer,
         "phone": PhoneAnonymizer,
         "pesel": PeselAnonymizer,
-        "name": NameAnonymizer,
+        "name":  NameAnonymizer,
     }
 
-    # Kolejność stosowania (pesel przed phone – oba mają liczby)
+    # PESEL przed phone – oba zawierają długie ciągi cyfr
     _DEFAULT_ORDER = ["pesel", "email", "phone", "name"]
 
     def __init__(self) -> None:
@@ -136,26 +133,20 @@ class DataAnonymizer:
             key: cls() for key, cls in self._STRATEGY_MAP.items()
         }
 
+    # ------------------------------------------------------------------
+    # Publiczne metody
+    # ------------------------------------------------------------------
+
     def anonymize(self, text: str, data_types: list[str] | None = None) -> str:
         """
         Anonimizuje tekst używając wybranych strategii.
 
-        Parametry:
-            text:       wejściowy tekst
-            data_types: lista typów do anonimizacji (None = wszystkie)
-
-        Zwraca tekst z zanonimizowanymi danymi + podsumowanie.
+        Zwraca tekst z zanonimizowanymi danymi + podsumowanie na końcu.
         """
-        if data_types is None:
-            data_types = self._DEFAULT_ORDER
-        else:
-            # zachowaj ustaloną kolejność
-            data_types = [t for t in self._DEFAULT_ORDER if t in data_types]
-
         result = text
         applied: list[str] = []
 
-        for dtype in data_types:
+        for dtype in self._resolve_order(data_types):
             strategy = self._strategies.get(dtype)
             if not strategy:
                 continue
@@ -172,10 +163,76 @@ class DataAnonymizer:
         return result + summary
 
     def preview(self, text: str) -> dict[str, int]:
-        """Wykrywa dane bez anonimizacji – zwraca słownik {typ: liczba_trafień}."""
+        """Wykrywa dane bez anonimizacji – zwraca {typ: liczba_trafień}."""
         findings: dict[str, int] = {}
         for name, strategy in self._strategies.items():
-            matches = re.findall(strategy.get_pattern(), text)
+            matches = list(re.finditer(strategy.get_pattern(), text))
             if matches:
                 findings[name] = len(matches)
         return findings
+
+    def anonymize_verbose(self, text: str, data_types: list[str] | None = None) -> dict:
+        """
+        Anonimizuje tekst i zwraca pełny raport zmian.
+
+        Zwraca:
+            {
+                "original":   str,       # tekst przed
+                "anonymized": str,       # tekst po
+                "changes": [
+                    {
+                        "type":      str,        # np. "email"
+                        "count":     int,        # liczba zamian
+                        "samples":   [           # max 3 przykłady
+                            {"original": str, "anonymized": str}
+                        ]
+                    }, ...
+                ]
+            }
+        """
+        result = text
+        changes: list[dict] = []
+
+        for dtype in self._resolve_order(data_types):
+            strategy = self._strategies.get(dtype)
+            if not strategy:
+                continue
+
+            pattern = strategy.get_pattern()
+            found_matches = [m.group() for m in re.finditer(pattern, result)]
+
+            new_result = strategy.anonymize(result)
+
+            if new_result != result and found_matches:
+                samples = []
+                for original in found_matches[:3]:
+                    # Aplikuj strategię na pojedynczym ciągu, by uzyskać formę po
+                    anonymized_sample = strategy.anonymize(original)
+                    samples.append({
+                        "original":   original,
+                        "anonymized": anonymized_sample,
+                    })
+
+                changes.append({
+                    "type":    dtype,
+                    "count":   len(found_matches),
+                    "samples": samples,
+                })
+
+            result = new_result
+
+        return {
+            "original":   text,
+            "anonymized": result,
+            "changes":    changes,
+        }
+
+    # ------------------------------------------------------------------
+    # Pomocnicze
+    # ------------------------------------------------------------------
+
+    def _resolve_order(self, data_types: list[str] | None) -> list[str]:
+        """Zwraca listę typów w ustalonej kolejności."""
+        if data_types is None:
+            return self._DEFAULT_ORDER
+        return [t for t in self._DEFAULT_ORDER if t in data_types]
