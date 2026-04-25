@@ -1,0 +1,11 @@
+{
+ "app_name": "ai_agent_demo",
+ "creation": "2024-01-01 00:00:00.000000",
+ "doctype": "Module Def",
+ "modified": "2024-01-01 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module_name": "AI Agent",
+ "name": "AI Agent",
+ "owner": "Administrator",
+ "restrict_to_domain": ""
+}

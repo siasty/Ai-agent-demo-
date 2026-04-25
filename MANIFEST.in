@@ -1,0 +1,9 @@
+include requirements.txt
+include license.txt
+include README.md
+
+recursive-include ai_agent_demo *.json
+recursive-include ai_agent_demo *.js
+recursive-include ai_agent_demo *.html
+recursive-include ai_agent_demo *.css
+recursive-include ai_agent_demo *.py

@@ -1,0 +1,77 @@
+{
+ "actions": [],
+ "autoname": "format:LOG-{YYYY}-{#####}",
+ "creation": "2024-01-01 00:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "session",
+  "query",
+  "answer",
+  "steps_json",
+  "steps_count"
+ ],
+ "fields": [
+  {
+   "fieldname": "session",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Sesja",
+   "options": "Agent Session"
+  },
+  {
+   "fieldname": "query",
+   "fieldtype": "Long Text",
+   "in_list_view": 1,
+   "label": "Zapytanie",
+   "reqd": 1
+  },
+  {
+   "fieldname": "answer",
+   "fieldtype": "Long Text",
+   "label": "Odpowiedź"
+  },
+  {
+   "fieldname": "steps_json",
+   "fieldtype": "Long Text",
+   "label": "Kroki (JSON)"
+  },
+  {
+   "default": "0",
+   "fieldname": "steps_count",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Liczba kroków"
+  }
+ ],
+ "links": [],
+ "modified": "2024-01-01 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "AI Agent",
+ "name": "Agent Log",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "read": 1,
+   "role": "All"
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "track_changes": 0
+}
