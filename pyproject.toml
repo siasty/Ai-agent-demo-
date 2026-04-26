@@ -9,9 +9,6 @@ requires-python = ">=3.10"
 [project.urls]
 Repository = "https://github.com/siasty/Ai-agent-demo-"
 
-[tool.flit.metadata]
-module = "ai_agent_demo"
-
 [build-system]
-requires = ["flit_core >=3.4,<4"]
-build-backend = "flit_core.buildapi"
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
