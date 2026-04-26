@@ -1,15 +1,3 @@
-from setuptools import setup, find_packages
+from setuptools import setup
 
-with open("requirements.txt") as f:
-    install_requires = f.read().strip().split("\n")
-
-setup(
-    name="ai_agent_demo",
-    version="0.1.0",
-    description="AI Agent Demo – lokalny model, wybór narzędzi, anonimizacja danych",
-    author="siasty",
-    packages=find_packages(),
-    zip_safe=False,
-    include_package_data=True,
-    install_requires=install_requires,
-)
+setup()
