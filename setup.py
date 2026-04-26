@@ -6,7 +6,7 @@ with open("requirements.txt") as f:
 setup(
     name="ai_agent_demo",
     version="0.1.0",
-    description="Demo agenta AI na lokalnym modelu – wybór narzędzi i anonimizacja danych",
+    description="Demo agenta AI na lokalnym modelu – wybor narzedzi i anonimizacja danych",
     author="siasty",
     packages=find_packages(),
     zip_safe=False,
