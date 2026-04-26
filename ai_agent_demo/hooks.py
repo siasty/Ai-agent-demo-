@@ -1,6 +1,5 @@
-from . import __version__ as app_version
-
 app_name = "ai_agent_demo"
+app_version = "0.1.0"
 app_title = "AI Agent Demo"
 app_publisher = "siasty"
 app_description = "Demo agenta AI na lokalnym modelu – wybór narzędzi i anonimizacja danych"
