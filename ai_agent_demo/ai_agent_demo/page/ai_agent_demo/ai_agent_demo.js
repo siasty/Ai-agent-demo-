@@ -3,7 +3,7 @@
 //
 // Pokazuje pipeline_log krok po kroku:
 //   INPUT → PRE-PROCESS → DETECT → AGENT INIT → MODEL → THINK →
-//   TOOL SELECT → TOOL INPUT → ANONYMIZE before/after → TOOL OUTPUT → FINISH
+//   TOOL SELECT → TOOL INPUT → TOOL OUTPUT → FINISH
 // =============================================================================
 
 frappe.pages["ai-agent-demo"].on_page_load = function (wrapper) {
@@ -20,10 +20,14 @@ frappe.pages["ai-agent-demo"].on_page_load = function (wrapper) {
 // Metadane narzędzi
 // ---------------------------------------------------------------------------
 const TOOL_META = {
-    anonymize_data:  { icon: "🔒", color: "#dc3545" },
-    search_database: { icon: "🔍", color: "#0d6efd" },
-    analyze_data:    { icon: "📊", color: "#198754" },
-    get_datetime:    { icon: "🕐", color: "#6f42c1" },
+    anonymize_data:       { icon: "🔒", color: "#dc3545" },
+    search_database:      { icon: "🔍", color: "#0d6efd" },
+    analyze_data:         { icon: "📊", color: "#198754" },
+    get_datetime:         { icon: "🕐", color: "#6f42c1" },
+    search_customers:     { icon: "🏢", color: "#0d6efd" },
+    analyze_sales_orders: { icon: "📈", color: "#198754" },
+    check_inventory:      { icon: "📦", color: "#fd7e14" },
+    business_analytics:   { icon: "💼", color: "#6f42c1" },
 };
 
 // Konfiguracja każdego typu zdarzenia w logu
@@ -89,7 +93,6 @@ class AIAgentDemoPage {
 
       <nav class="ad-tabs">
         <button class="ad-tab active" data-tab="agent">🤖 Agent AI</button>
-        <button class="ad-tab" data-tab="anon">🔒 Anonimizacja Danych</button>
       </nav>
 
       <!-- Tab: Agent -->
@@ -104,8 +107,10 @@ class AIAgentDemoPage {
 
         <div class="ad-chips">
           <span class="ad-chip" data-q="Podaj aktualną datę i godzinę">🕐 Podaj aktualną datę i godzinę</span>
-          <span class="ad-chip" data-q="Zanonimizuj: Jan Kowalski, jan@example.com, tel: 500 100 200, PESEL: 85071234567">🔒 Zanonimizuj dane osobowe</span>
-          <span class="ad-chip" data-q="Oblicz statystyki dla liczb: 15, 42, 7, 93, 28, 64">📊 Oblicz statystyki</span>
+          <span class="ad-chip" data-q="Wyszukaj klientów z Warszawy">🏢 Klienci z Warszawy (z anonimizacją PII)</span>
+          <span class="ad-chip" data-q="Pokaż analizę zamówień z ostatnich 30 dni">📈 Analiza zamówień sprzedaży</span>
+          <span class="ad-chip" data-q="Sprawdź stan magazynu dla produktów LED">📦 Stan magazynu LED</span>
+          <span class="ad-chip" data-q="Wykonaj analizę biznesową sprzedaży">💼 Analiza biznesowa</span>
         </div>
 
         <!-- Pipeline log -->
@@ -119,28 +124,6 @@ class AIAgentDemoPage {
 
       </div>
 
-      <!-- Tab: Anonimizacja -->
-      <div id="ad-tab-anon" class="ad-tab-body" style="display:none">
-        <div class="ad-anon-grid">
-          <div>
-            <p class="ad-label">Tekst z danymi osobowymi</p>
-            <textarea id="ad-anon-in" class="ad-textarea"
-              placeholder="Wklej tekst…&#10;&#10;Przykład:&#10;Klient Jan Kowalski (PESEL: 85071234567)&#10;Email: jan.kowalski@example.com&#10;Tel: +48 500 100 200"></textarea>
-            <div class="ad-types">
-              <label class="ad-chk"><input type="checkbox" class="ad-type" value="email" checked> 📧 Email</label>
-              <label class="ad-chk"><input type="checkbox" class="ad-type" value="phone" checked> 📱 Telefon</label>
-              <label class="ad-chk"><input type="checkbox" class="ad-type" value="pesel" checked> 🪪 PESEL</label>
-              <label class="ad-chk"><input type="checkbox" class="ad-type" value="name"  checked> 👤 Imiona</label>
-            </div>
-            <button id="ad-anon-btn" class="ad-btn" style="margin-top:10px">🔒 Anonimizuj</button>
-          </div>
-          <div>
-            <p class="ad-label">Wynik anonimizacji</p>
-            <div id="ad-anon-out" class="ad-anon-out"><span class="ad-muted">Wynik pojawi się tutaj…</span></div>
-            <div id="ad-findings"></div>
-          </div>
-        </div>
-      </div>
 
     </main>
   </div>
@@ -166,8 +149,6 @@ class AIAgentDemoPage {
         this.$el.on("click", ".ad-chip", (e) => {
             this.$el.find("#ad-query").val($(e.currentTarget).data("q")).focus();
         });
-
-        this.$el.find("#ad-anon-btn").on("click", () => this._anon());
     }
 
     // -----------------------------------------------------------------------
@@ -175,7 +156,7 @@ class AIAgentDemoPage {
     // -----------------------------------------------------------------------
     _load_status() {
         frappe.call({
-            method: "ai_agent_demo.ai_agent.api.get_agent_status",
+            method: "ai_agent_demo.ai_agent_demo.api.get_agent_status",
             callback: (r) => {
                 const s = r.message || {};
                 if (s.ollama_available) {
@@ -193,7 +174,7 @@ class AIAgentDemoPage {
 
     _load_tools() {
         frappe.call({
-            method: "ai_agent_demo.ai_agent.api.get_available_tools",
+            method: "ai_agent_demo.ai_agent_demo.api.get_available_tools",
             callback: (r) => {
                 const $list = this.$el.find("#ad-tools-list").empty();
                 (r.message || []).forEach((t) => {
@@ -233,7 +214,7 @@ class AIAgentDemoPage {
 </div>`);
 
         frappe.call({
-            method: "ai_agent_demo.ai_agent.api.run_agent",
+            method: "ai_agent_demo.ai_agent_demo.api.run_agent",
             args: { query, session_name: this.session },
             callback: (r) => {
                 $btn.prop("disabled", false);
@@ -339,38 +320,6 @@ class AIAgentDemoPage {
         return `<span class="ad-mono">${frappe.utils.escape_html(String(data))}</span>`;
     }
 
-    // -----------------------------------------------------------------------
-    // Zakładka anonimizacji
-    // -----------------------------------------------------------------------
-    _anon() {
-        const text = this.$el.find("#ad-anon-in").val();
-        if (!text.trim()) return;
-
-        const types = [];
-        this.$el.find(".ad-type:checked").each((_, el) => types.push(el.value));
-
-        frappe.call({
-            method: "ai_agent_demo.ai_agent.api.anonymize_text",
-            args: { text, data_types: JSON.stringify(types) },
-            callback: (r) => {
-                if (!r.message) return;
-                const { anonymized, findings } = r.message;
-                this.$el.find("#ad-anon-out").text(anonymized);
-
-                const $f = this.$el.find("#ad-findings").empty();
-                const COLORS = { email: "#0d6efd", phone: "#198754", pesel: "#dc3545", name: "#fd7e14" };
-                if (Object.keys(findings).length) {
-                    $f.append(`<span style="font-size:11px;font-weight:700;color:#6c757d">WYKRYTO: </span>`);
-                    Object.entries(findings).forEach(([k, v]) => {
-                        const c = COLORS[k] || "#6c757d";
-                        $f.append(`<span class="ad-badge" style="background:${c}20;color:${c};border:1px solid ${c}50">${k}: ${v}</span> `);
-                    });
-                } else {
-                    $f.html(`<span class="ad-muted">Brak wykrytych danych osobowych.</span>`);
-                }
-            },
-        });
-    }
 }
 
 // =============================================================================
@@ -459,16 +408,7 @@ function _inject_styles() {
 .ad-json{font-family:monospace;font-size:11px;background:rgba(0,0,0,.04);padding:2px 5px;border-radius:3px;word-break:break-all}
 .ad-muted{color:#6c757d;font-style:italic;font-size:11px}
 
-/* ===== ANONIMIZACJA TAB ===== */
-.ad-anon-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
-.ad-textarea{width:100%;padding:10px;border:1px solid #dee2e6;border-radius:6px;font-family:monospace;font-size:12px;min-height:170px;resize:vertical;outline:none;box-sizing:border-box;transition:border-color .2s}
-.ad-textarea:focus{border-color:#4361ee;box-shadow:0 0 0 3px rgba(67,97,238,.1)}
-.ad-types{display:flex;flex-wrap:wrap;gap:10px;margin:10px 0}
-.ad-chk{display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer}
-.ad-anon-out{min-height:170px;padding:10px;background:#f8f9fa;border:1px solid #e9ecef;border-radius:6px;font-family:monospace;font-size:12px;white-space:pre-wrap;word-break:break-word}
-#ad-findings{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;align-items:center}
-
-@media(max-width:768px){.ad-grid,.ad-anon-grid{grid-template-columns:1fr}}
+@media(max-width:768px){.ad-grid{grid-template-columns:1fr}}
 `;
     document.head.appendChild(s);
 }

@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>AI Agent Demo - TechParts</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #f8f9fa;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            height: 100vh;
+            overflow: hidden; /* Remove outer scroll */
+        }
+
+        .page-container {
+            height: 100vh;
+            overflow-y: auto;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .content-wrapper {
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            max-width: 1200px;
+            margin: 0 auto;
+            height: calc(100vh - 40px);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .ai-demo-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+            flex-shrink: 0;
+        }
+
+        .ai-demo-header h1 {
+            margin: 0 0 10px 0;
+            font-size: 28px;
+            font-weight: 700;
+        }
+
+        .ai-demo-header p {
+            margin: 0;
+            font-size: 16px;
+            opacity: 0.9;
+        }
+
+        .content-area {
+            flex: 1;
+            overflow-y: auto;
+            padding: 30px;
+        }
+
+        .demo-features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .feature-card {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            padding: 25px;
+            text-align: center;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+        }
+
+        .feature-icon {
+            font-size: 48px;
+            margin-bottom: 15px;
+            display: block;
+        }
+
+        .feature-card h3 {
+            margin: 0 0 10px 0;
+            color: #495057;
+            font-size: 18px;
+        }
+
+        .feature-card p {
+            margin: 0;
+            color: #6c757d;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        .demo-actions {
+            text-align: center;
+            padding: 20px 0;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+            text-decoration: none;
+            display: inline-block;
+            margin: 0 10px;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+
+        .demo-footer {
+            text-align: center;
+            padding: 20px;
+            background: #f8f9fa;
+            border-top: 1px solid #e9ecef;
+            flex-shrink: 0;
+        }
+
+        .demo-footer p {
+            margin: 0;
+            color: #6c757d;
+            font-size: 13px;
+        }
+
+        /* Mobile responsive */
+        @media (max-width: 768px) {
+            .page-container { padding: 10px; }
+            .content-wrapper { height: calc(100vh - 20px); }
+            .ai-demo-header { padding: 20px; }
+            .ai-demo-header h1 { font-size: 24px; }
+            .content-area { padding: 20px; }
+            .demo-features { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div class="page-container">
+        <div class="content-wrapper">
+            <div class="ai-demo-header">
+                <h1>🤖 AI Agent Demo - TechParts Sp. z o.o.</h1>
+                <p>Demonstracja agenta AI z automatyczną anonimizacją danych osobowych</p>
+            </div>
+
+            <div class="content-area">
+                <div class="demo-features">
+                    <div class="feature-card">
+                        <span class="feature-icon">🛡️</span>
+                        <h3>Anonimizacja Danych</h3>
+                        <p>Automatyczna ochrona danych osobowych zgodnie z RODO. Wszystkie dane są przetwarzane bezpiecznie.</p>
+                    </div>
+
+                    <div class="feature-card">
+                        <span class="feature-icon">🧠</span>
+                        <h3>AI Processing</h3>
+                        <p>Zaawansowane przetwarzanie języka naturalnego z wykorzystaniem najnowszych technologii AI.</p>
+                    </div>
+
+                    <div class="feature-card">
+                        <span class="feature-icon">⚡</span>
+                        <h3>Lokalny Model</h3>
+                        <p>Przetwarzanie odbywa się na lokalnej infrastrukturze TechParts - pełna kontrola nad danymi.</p>
+                    </div>
+
+                    <div class="feature-card">
+                        <span class="feature-icon">📊</span>
+                        <h3>Integracja ERP</h3>
+                        <p>Bezpośrednia integracja z systemem Frappe/ERPNext - dostęp do wszystkich danych biznesowych.</p>
+                    </div>
+                </div>
+
+                <div class="demo-actions">
+                    <a href="/app" class="btn-primary">🏠 Wróć do Frappe</a>
+                    <a href="/ai_agent_embed" class="btn-primary">👁️ Widok Embed</a>
+                </div>
+            </div>
+
+            <div class="demo-footer">
+                <p>Demo Environment • TechParts Sp. z o.o. • 2026 • Powered by Frappe Framework</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Add interactivity
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('AI Agent Demo - Standalone page loaded');
+
+            // Card hover effects
+            const cards = document.querySelectorAll('.feature-card');
+            cards.forEach(card => {
+                card.addEventListener('click', function() {
+                    this.style.transform = 'scale(0.98) translateY(-2px)';
+                    setTimeout(() => {
+                        this.style.transform = 'translateY(-2px)';
+                    }, 150);
+                });
+            });
+
+            // Responsive height adjustment
+            function adjustHeight() {
+                const vh = window.innerHeight * 0.01;
+                document.documentElement.style.setProperty('--vh', `${vh}px`);
+            }
+
+            adjustHeight();
+            window.addEventListener('resize', adjustHeight);
+        });
+    </script>
+</body>
+</html>

@@ -196,9 +196,16 @@ class DateTimeTool(Tool):
 
 def get_default_tools() -> list[Tool]:
     """Zwraca domyślny zestaw narzędzi dla demo agenta."""
-    return [
+    from .erp_tools import get_erp_tools
+
+    base_tools = [
         AnonymizationTool(),
         DatabaseSearchTool(),
         DataAnalysisTool(),
         DateTimeTool(),
     ]
+
+    # Dodaj narzędzia ERPNext
+    erp_tools = get_erp_tools()
+
+    return base_tools + erp_tools

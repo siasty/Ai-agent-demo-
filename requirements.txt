@@ -1,3 +1,0 @@
-frappe
-requests>=2.31.0
-spacy>=3.7.0
