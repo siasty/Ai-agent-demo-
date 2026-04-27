@@ -64,53 +64,59 @@ AI_AGENT_CUSTOM_BLOCK_STYLE = """
 
 def after_migrate():
     """Called after every migration to ensure AI Agent Demo integration."""
-    # Integration with workspace_page_embedder module
-    _setup_ai_agent_page_embeds()
+    # Create workspace for AI Agent Demo
+    _setup_ai_agent_workspace()
     frappe.clear_cache()
 
 
-def _setup_ai_agent_page_embeds():
-    """Setup AI Agent Demo page embeds using the workspace_page_embedder system."""
-    # Check if workspace_page_embedder is available
-    if not frappe.db.table_exists("Page Embed"):
-        frappe.msgprint("Workspace Page Embedder module not found. Please install it first.", "Warning")
-        return
+def _setup_ai_agent_workspace():
+    """Setup AI Agent Demo workspace with proper page integration."""
+    workspace_name = "AI Agent Demo - TechParts"
 
-    # Create a page embed for AI Agent Demo interface
-    embed_name = "AI Agent Demo Interface"
+    if frappe.db.exists("Workspace", workspace_name):
+        return  # Already exists
 
-    if not frappe.db.exists("Page Embed", embed_name):
-        # Create the page embed document
-        embed_doc = frappe.get_doc({
-            "doctype": "Page Embed",
-            "embed_name": embed_name,
-            "target_page": "ai-agent-demo",  # This should be your custom page
-            "description": "AI Agent Demo interface with data anonymization",
-            "enabled": 1,
-            "display_height": 700,
-            "display_width": 100,
-            "responsive": 1,
-            "loading_message": "Loading AI Agent Demo...",
-            "error_message": "AI Agent Demo temporarily unavailable. Please contact administrator.",
-            "custom_css": AI_AGENT_CUSTOM_BLOCK_STYLE,
-            "permissions": [
-                {"role": "System Manager", "read": 1},
-                {"role": "Workspace Manager", "read": 1}
-            ]
-        })
+    # Create workspace
+    workspace_doc = frappe.get_doc({
+        "doctype": "Workspace",
+        "name": workspace_name,
+        "title": workspace_name,
+        "icon": "robot",
+        "module": "AI Agent Demo",
+        "app": "ai_agent_demo",
+        "is_standard": 0,
+        "public": 1,
+        "content": frappe.as_json([
+            {
+                "id": frappe.generate_hash(length=8),
+                "type": "header",
+                "data": {
+                    "text": "🤖 AI Agent Demo",
+                    "col": 12
+                }
+            },
+            {
+                "id": frappe.generate_hash(length=8),
+                "type": "paragraph",
+                "data": {
+                    "text": "Demonstracja agenta AI z automatyczną anonimizacją danych osobowych zgodnie z RODO.",
+                    "col": 12
+                }
+            },
+            {
+                "id": frappe.generate_hash(length=8),
+                "type": "page",
+                "data": {
+                    "page_name": "ai-agent-demo",
+                    "label": "🤖 Chat z Agentem AI",
+                    "col": 12
+                }
+            }
+        ])
+    })
 
-        try:
-            embed_doc.insert(ignore_permissions=True)
-            frappe.msgprint(f"✅ Created Page Embed: {embed_name}")
-        except Exception as e:
-            frappe.log_error(f"Failed to create Page Embed: {str(e)}")
-
-    # Ensure we have the required roles
-    for role in AI_AGENT_ACCESS_ROLES:
-        if not frappe.db.exists("Role", role):
-            role_doc = frappe.get_doc({
-                "doctype": "Role",
-                "role_name": role,
-                "desk_access": 1
-            })
-            role_doc.insert(ignore_if_duplicate=True)
+    try:
+        workspace_doc.insert(ignore_permissions=True)
+        frappe.msgprint(f"✅ Created Workspace: {workspace_name}")
+    except Exception as e:
+        frappe.log_error(f"Failed to create workspace: {str(e)}")

@@ -68,9 +68,7 @@ app_license = "mit"
 # website_generators = ["Web Page"]
 
 # Custom web routes
-website_route_rules = [
-    {"from_route": "/embed/<page_name>", "to_route": "embed_page_handler"},
-]
+# website_route_rules = []
 
 # Jinja
 # ----------
