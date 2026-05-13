@@ -9,6 +9,6 @@ def get_data():
             "icon": "octicon octicon-hubot",
             "type": "module",
             "label": _("AI Agent Demo"),
-            "description": _("Demo agenta AI – wybór narzędzi i anonimizacja danych"),
+            "description": _("AI agent demo – tool selection and data anonymization"),
         }
     ]

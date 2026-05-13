@@ -99,7 +99,7 @@ def _setup_ai_agent_workspace():
                 "id": frappe.generate_hash(length=8),
                 "type": "paragraph",
                 "data": {
-                    "text": "Demonstracja agenta AI z automatyczną anonimizacją danych osobowych zgodnie z RODO.",
+                    "text": "AI Agent demonstration with automatic personal data anonymization according to GDPR.",
                     "col": 12
                 }
             },
@@ -108,7 +108,7 @@ def _setup_ai_agent_workspace():
                 "type": "page",
                 "data": {
                     "page_name": "ai-agent-demo",
-                    "label": "🤖 Chat z Agentem AI",
+                    "label": "🤖 Chat with AI Agent",
                     "col": 12
                 }
             }

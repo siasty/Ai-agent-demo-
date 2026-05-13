@@ -1,7 +1,7 @@
 app_name = "ai_agent_demo"
 app_title = "AI Agent Demo"
 app_publisher = "siasty3@gmail.com"
-app_description = "Demo agenta AI na lokalnym modelu – wybór narzędzi i anonimizacja danych"
+app_description = "AI agent demo on local model – tool selection and data anonymization"
 app_email = "siasty3@gmail.com"
 app_license = "mit"
 
@@ -96,6 +96,13 @@ after_migrate = "ai_agent_demo.ai_agent_demo.setup.after_migrate"
 # --------
 
 # fixtures = []
+
+# Patches
+# --------
+
+patches = [
+    "ai_agent_demo.patches.create_demo_data"
+]
 
 # Uninstallation
 # ------------

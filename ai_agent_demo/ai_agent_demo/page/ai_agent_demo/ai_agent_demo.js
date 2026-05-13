@@ -1,7 +1,7 @@
 // =============================================================================
 // AI Agent Demo – Frappe Page (plain JS, no build step needed)
 //
-// Pokazuje pipeline_log krok po kroku:
+// Shows pipeline_log step by step:
 //   INPUT → PRE-PROCESS → DETECT → AGENT INIT → MODEL → THINK →
 //   TOOL SELECT → TOOL INPUT → TOOL OUTPUT → FINISH
 // =============================================================================
@@ -17,38 +17,54 @@ frappe.pages["ai-agent-demo"].on_page_load = function (wrapper) {
 };
 
 // ---------------------------------------------------------------------------
-// Metadane narzędzi
+// Tool metadata
 // ---------------------------------------------------------------------------
 const TOOL_META = {
-    anonymize_data:       { icon: "🔒", color: "#dc3545" },
-    search_database:      { icon: "🔍", color: "#0d6efd" },
-    analyze_data:         { icon: "📊", color: "#198754" },
-    get_datetime:         { icon: "🕐", color: "#6f42c1" },
-    search_customers:     { icon: "🏢", color: "#0d6efd" },
-    analyze_sales_orders: { icon: "📈", color: "#198754" },
-    check_inventory:      { icon: "📦", color: "#fd7e14" },
-    business_analytics:   { icon: "💼", color: "#6f42c1" },
+    analyze_sales_order:        { icon: "📊", color: "#198754" },
+    check_customer_credit_history: { icon: "💳", color: "#dc3545" },
 };
 
-// Konfiguracja każdego typu zdarzenia w logu
+// Log event type configuration
 const LOG_CFG = {
-    input:            { icon: "📥", color: "#0d6efd",  bg: "#f0f7ff", title: "WEJŚCIE" },
-    preprocess:       { icon: "⚙️",  color: "#6f42c1",  bg: "#f8f5ff", title: "PRE-PROCESSING" },
-    detect:           { icon: "🔍", color: "#fd7e14",  bg: "#fff8f0", title: "WYKRYWANIE DANYCH" },
-    agent_init:       { icon: "🤖", color: "#0dcaf0",  bg: "#f0feff", title: "AGENT INIT" },
-    model_req:        { icon: "➡️",  color: "#6c757d",  bg: "#f8f9fa", title: "MODEL REQUEST" },
-    think:            { icon: "💭", color: "#856404",  bg: "#fffbef", title: "MYŚL (REASON)" },
-    tool_select:      { icon: "🎯", color: "#4361ee",  bg: "#f0f4ff", title: "WYBÓR NARZĘDZIA (ACT)" },
-    tool_input:       { icon: "↘️",  color: "#4361ee",  bg: "#eef1ff", title: "PARAMETRY WEJŚCIOWE" },
-    anon_start:       { icon: "🔎", color: "#dc3545",  bg: "#fff5f5", title: "ANONIMIZACJA START" },
-    anonymize_change: { icon: "🔒", color: "#dc3545",  bg: "#fff5f5", title: "ZMIANA" },
-    anon_done:        { icon: "✔️",  color: "#198754",  bg: "#f0fff4", title: "ANONIMIZACJA OK" },
-    tool_output:      { icon: "↙️",  color: "#198754",  bg: "#f0fff4", title: "WYNIK NARZĘDZIA (OBSERVE)" },
-    finish:           { icon: "✅", color: "#198754",  bg: "#e8f8ee", title: "ODPOWIEDŹ KOŃCOWA" },
+    input:                    { icon: "📥", color: "#0d6efd",  bg: "#f0f7ff", title: "INPUT" },
+    preprocess:               { icon: "⚙️",  color: "#6f42c1",  bg: "#f8f5ff", title: "PRE-PROCESSING" },
+    detect:                   { icon: "🔍", color: "#fd7e14",  bg: "#fff8f0", title: "DATA DETECTION" },
+    agent_init:               { icon: "🤖", color: "#0dcaf0",  bg: "#f0feff", title: "AGENT INIT" },
+    model_req:                { icon: "➡️",  color: "#6c757d",  bg: "#f8f9fa", title: "MODEL REQUEST" },
+    think:                    { icon: "💭", color: "#856404",  bg: "#fffbef", title: "THINK (REASON)" },
+    tool_select:              { icon: "🎯", color: "#4361ee",  bg: "#f0f4ff", title: "TOOL SELECTION (ACT)" },
+    tool_input:               { icon: "↘️",  color: "#4361ee",  bg: "#eef1ff", title: "INPUT PARAMETERS" },
+
+    // ERP Data Fetching
+    data_fetch:               { icon: "🗃️",  color: "#0d6efd",  bg: "#f0f7ff", title: "ERP DATA FETCH" },
+    sensitive_data_detected:  { icon: "🤖", color: "#6f42c1",  bg: "#f8f5ff", title: "AI AUTOMATED DETECTION" },
+
+    // Pseudonymization Process
+    pseudonymize_start:       { icon: "🔒", color: "#dc3545",  bg: "#fff5f5", title: "PSEUDONYMIZATION START" },
+    pseudonymize_complete:    { icon: "✅", color: "#dc3545",  bg: "#fff5f5", title: "PSEUDONYMIZATION COMPLETE" },
+    ai_input_data:           { icon: "🤖", color: "#28a745",  bg: "#f0fff4", title: "AI INPUT DATA (SAFE)" },
+
+    // AI Processing
+    llm_analysis:            { icon: "🧠", color: "#6f42c1",  bg: "#f8f5ff", title: "AI ANALYSIS" },
+    llm_response:            { icon: "💬", color: "#6f42c1",  bg: "#f8f5ff", title: "AI RESPONSE" },
+    token_check:             { icon: "🔍", color: "#856404",  bg: "#fffbef", title: "TOKEN CHECK" },
+
+    // Depseudonymization
+    depseudonymize:          { icon: "🔓", color: "#198754",  bg: "#f0fff4", title: "DEPSEUDONYMIZATION" },
+    depseudonymize_changes:  { icon: "🔄", color: "#198754",  bg: "#f0fff4", title: "RESTORE IDENTIFIERS" },
+    final_response:          { icon: "📊", color: "#198754",  bg: "#e8f8ee", title: "FINAL BUSINESS ANALYSIS" },
+
+    // Legacy/General
+    anon_start:              { icon: "🔎", color: "#dc3545",  bg: "#fff5f5", title: "ANONYMIZATION START" },
+    anonymize_change:        { icon: "🔒", color: "#dc3545",  bg: "#fff5f5", title: "CHANGE" },
+    anon_done:               { icon: "✔️",  color: "#198754",  bg: "#f0fff4", title: "ANONYMIZATION OK" },
+    tool_output:             { icon: "↙️",  color: "#198754",  bg: "#f0fff4", title: "TOOL RESULT (OBSERVE)" },
+    complete:                { icon: "✅", color: "#198754",  bg: "#e8f8ee", title: "COMPLETE" },
+    finish:                  { icon: "✅", color: "#198754",  bg: "#e8f8ee", title: "FINAL ANSWER" },
 };
 
 // ---------------------------------------------------------------------------
-// Główna klasa strony
+// Main page class
 // ---------------------------------------------------------------------------
 class AIAgentDemoPage {
     constructor(page) {
@@ -68,7 +84,7 @@ class AIAgentDemoPage {
 
   <div class="ad-status-bar">
     <span id="ad-dot" class="ad-dot"></span>
-    <span id="ad-status-txt">Sprawdzanie Ollama&hellip;</span>
+    <span id="ad-status-txt">Checking Ollama&hellip;</span>
     <span id="ad-model-list"></span>
   </div>
 
@@ -77,47 +93,46 @@ class AIAgentDemoPage {
     <!-- Sidebar -->
     <aside class="ad-sidebar">
       <div class="ad-card">
-        <p class="ad-label">Dostępne narzędzia</p>
+        <p class="ad-label">Available Tools</p>
         <div id="ad-tools-list"></div>
       </div>
       <div class="ad-card">
-        <p class="ad-label">Jak działa agent? (ReAct)</p>
-        <div class="ad-react-row"><div class="ad-rnum">1</div><div><b>Myśl</b> – LLM wybiera narzędzie</div></div>
-        <div class="ad-react-row"><div class="ad-rnum">2</div><div><b>Działaj</b> – wywołuje narzędzie</div></div>
-        <div class="ad-react-row"><div class="ad-rnum">3</div><div><b>Obserwuj</b> – przetwarza wynik</div></div>
+        <p class="ad-label">How does the agent work? (ReAct)</p>
+        <div class="ad-react-row"><div class="ad-rnum">1</div><div><b>Think</b> – LLM selects tool</div></div>
+        <div class="ad-react-row"><div class="ad-rnum">2</div><div><b>Act</b> – executes tool</div></div>
+        <div class="ad-react-row"><div class="ad-rnum">3</div><div><b>Observe</b> – processes result</div></div>
       </div>
     </aside>
 
-    <!-- Panel główny -->
+    <!-- Main panel -->
     <main class="ad-main">
 
       <nav class="ad-tabs">
-        <button class="ad-tab active" data-tab="agent">🤖 Agent AI</button>
+        <button class="ad-tab active" data-tab="agent">🤖 AI Agent</button>
       </nav>
 
       <!-- Tab: Agent -->
       <div id="ad-tab-agent" class="ad-tab-body">
 
         <div class="ad-input-row">
-          <input id="ad-query" class="ad-input" type="text" placeholder="Zadaj pytanie agentowi…" />
+          <input id="ad-query" class="ad-input" type="text" placeholder="Ask the agent a question about sales orders..." />
           <button id="ad-run-btn" class="ad-btn">
-            <span id="ad-btn-label">▶ Uruchom</span>
+            <span id="ad-btn-label">▶ Run</span>
           </button>
         </div>
 
         <div class="ad-chips">
-          <span class="ad-chip" data-q="Podaj aktualną datę i godzinę">🕐 Podaj aktualną datę i godzinę</span>
-          <span class="ad-chip" data-q="Wyszukaj klientów z Warszawy">🏢 Klienci z Warszawy (z anonimizacją PII)</span>
-          <span class="ad-chip" data-q="Pokaż analizę zamówień z ostatnich 30 dni">📈 Analiza zamówień sprzedaży</span>
-          <span class="ad-chip" data-q="Sprawdź stan magazynu dla produktów LED">📦 Stan magazynu LED</span>
-          <span class="ad-chip" data-q="Wykonaj analizę biznesową sprzedaży">💼 Analiza biznesowa</span>
+          <span class="ad-chip" data-q="Analyze sales order SAL-ORD-2026-00006 for risks">📊 Analyze SAL-ORD-2026-00006</span>
+          <span class="ad-chip" data-q="Check credit history for MicroDevices Partners">💳 Credit: MicroDevices Partners</span>
+          <span class="ad-chip" data-q="Analyze sales order SAL-ORD-2026-00005 for commercial and credit risks">🔍 Risk analysis SAL-ORD-2026-00005</span>
+          <span class="ad-chip" data-q="Check customer credit history for TechnoServices Corp">⚠️ Credit: TechnoServices Corp</span>
         </div>
 
         <!-- Pipeline log -->
         <div id="ad-log-wrap" style="display:none">
           <div class="ad-log-hdr">
-            <span class="ad-label" style="margin:0">Pipeline Log – krok po kroku</span>
-            <span id="ad-log-cnt" class="ad-log-cnt">0 zdarzeń</span>
+            <span class="ad-label" style="margin:0">Pipeline Log – step by step</span>
+            <span id="ad-log-cnt" class="ad-log-cnt">0 events</span>
           </div>
           <div id="ad-log" class="ad-log"></div>
         </div>
@@ -132,7 +147,7 @@ class AIAgentDemoPage {
     }
 
     // -----------------------------------------------------------------------
-    // Zdarzenia
+    // Events
     // -----------------------------------------------------------------------
     _bind() {
         this.$el.on("click", ".ad-tab", (e) => {
@@ -161,7 +176,7 @@ class AIAgentDemoPage {
                 const s = r.message || {};
                 if (s.ollama_available) {
                     this.$el.find("#ad-dot").addClass("online");
-                    this.$el.find("#ad-status-txt").text("Ollama: połączono");
+                    this.$el.find("#ad-status-txt").text("Ollama: connected");
                     this.$el.find("#ad-model-list").text(`Modele: ${(s.models || []).slice(0, 3).join(", ")}`);
                 } else {
                     this.$el.find("#ad-dot").addClass("offline");
@@ -202,11 +217,11 @@ class AIAgentDemoPage {
         if (!query) return;
 
         const $btn = this.$el.find("#ad-run-btn").prop("disabled", true);
-        this.$el.find("#ad-btn-label").html('<span class="ad-spin"></span> Myślę…');
+        this.$el.find("#ad-btn-label").html('<span class="ad-spin"></span> Thinking…');
 
         const $log = this.$el.find("#ad-log").empty();
         this.$el.find("#ad-log-wrap").show();
-        this.$el.find("#ad-log-cnt").text("0 zdarzeń");
+        this.$el.find("#ad-log-cnt").text("0 events");
 
         $log.append(`<div class="ad-entry ad-thinking">
   <span class="ad-spin" style="border-color:rgba(0,0,0,.1);border-top-color:#4361ee"></span>
@@ -230,14 +245,14 @@ class AIAgentDemoPage {
                 $log.html(`<div class="ad-entry" style="background:#fff5f5;border-left:3px solid #dc3545">
   <div class="ad-e-icon">❌</div>
   <div><div class="ad-e-type" style="color:#dc3545">BŁĄD</div>
-  <div class="ad-e-label">Błąd połączenia z agentem</div></div>
+  <div class="ad-e-label">Connection error with agent</div></div>
 </div>`);
             },
         });
     }
 
     // -----------------------------------------------------------------------
-    // Renderowanie logu – wpisy pojawiają się jeden po drugim
+    // Log rendering - entries appear one by one
     // -----------------------------------------------------------------------
     _render_log(entries) {
         const $log = this.$el.find("#ad-log");
@@ -246,7 +261,7 @@ class AIAgentDemoPage {
         entries.forEach((entry, i) => {
             setTimeout(() => {
                 $log.append(this._make_entry(entry));
-                $cnt.text(`${i + 1} zdarzeń`);
+                $cnt.text(`${i + 1} events`);
                 $log[0].scrollTop = $log[0].scrollHeight;
 
                 if (entry.type === "tool_select" && typeof entry.data === "string") {
@@ -257,7 +272,7 @@ class AIAgentDemoPage {
     }
 
     // -----------------------------------------------------------------------
-    // Budowanie pojedynczego wpisu logu
+    // Building a single log entry
     // -----------------------------------------------------------------------
     _make_entry(e) {
         const cfg = LOG_CFG[e.type] || { icon: "▸", color: "#495057", bg: "#fff", title: e.type.toUpperCase() };
@@ -274,12 +289,12 @@ class AIAgentDemoPage {
     }
 
     // -----------------------------------------------------------------------
-    // Formatowanie danych według typu zdarzenia
+    // Formatting data according to event type
     // -----------------------------------------------------------------------
     _fmt(data, type) {
         if (data === null || data === undefined || data === "") return "";
 
-        // Anonimizacja – pokazuj before → after dla każdego sample
+        // Anonymization - show before → after for each sample
         if (type === "anonymize_change") {
             if (typeof data === "object" && Array.isArray(data.samples)) {
                 const rows = data.samples.map(s =>
@@ -293,17 +308,118 @@ class AIAgentDemoPage {
             }
         }
 
-        // Wykryte dane – kolorowe badges
+        // Enhanced sensitive data detection with method information
+        if (type === "sensitive_data_detected" && typeof data === "object" && data.detection_method) {
+            let html = `<div style="margin-bottom:8px;">`;
+
+            // Detection method badge - highlight automation
+            const methodColor = data.detection_method.includes('Automated') ? '#6f42c1' : '#fd7e14';
+            html += `<span class="ad-badge" style="background:${methodColor}20;color:${methodColor};border:1px solid ${methodColor}50">
+                🤖 ${data.detection_method}
+            </span>`;
+
+            // NLP framework if available
+            if (data.nlp_framework) {
+                html += ` <span class="ad-badge" style="background:#6f42c120;color:#6f42c1;border:1px solid #6f42c150">
+                    🧠 Framework: ${data.nlp_framework}
+                </span>`;
+            }
+
+            html += `</div>`;
+
+            // Sensitive fields
+            if (data.sensitive_fields && Object.keys(data.sensitive_fields).length > 0) {
+                html += `<div style="margin-bottom:6px;"><strong>Sensitive fields found:</strong></div>`;
+                const COLORS = {
+                    customer_name: "#dc3545", customer_email: "#0d6efd", customer_phone: "#198754",
+                    customer_address: "#fd7e14", sales_rep_name: "#6f42c1", sales_rep_email: "#20c997"
+                };
+                html += Object.entries(data.sensitive_fields).map(([k, v]) => {
+                    const c = COLORS[k] || "#6c757d";
+                    const label = k.replace('customer_', '').replace('sales_rep_', 'rep_').replace('_', ' ');
+                    return `<span class="ad-badge" style="background:${c}20;color:${c};border:1px solid ${c}50">
+                        ${label}: ${frappe.utils.escape_html(String(v))}
+                    </span>`;
+                }).join(" ");
+            }
+
+            // Entity types and patterns if available
+            if (data.entity_types_supported || data.custom_patterns) {
+                html += `<div style="margin-top:8px;font-size:11px;color:#6c757d;">`;
+                if (data.entity_types_supported && data.entity_types_supported.length > 0) {
+                    html += `<div>🎯 Entity types: ${data.entity_types_supported.join(', ')}</div>`;
+                }
+                if (data.custom_patterns && data.custom_patterns.length > 0) {
+                    html += `<div>🛠️ Custom patterns: ${data.custom_patterns.join(', ')}</div>`;
+                }
+                html += `</div>`;
+            }
+
+            return html;
+        }
+
+        // Wykryte dane – kolorowe badges (legacy)
         if (type === "detect" && typeof data === "object" && !Array.isArray(data)) {
-            if (!Object.keys(data).length) return `<span class="ad-muted">brak danych osobowych</span>`;
-            const COLORS = { email: "#0d6efd", phone: "#198754", pesel: "#dc3545", name: "#fd7e14" };
+            if (!Object.keys(data).length) return `<span class="ad-muted">no personal data</span>`;
+            const COLORS = { email: "#0d6efd", phone: "#198754", ssn: "#dc3545", name: "#fd7e14" };
             return Object.entries(data).map(([k, v]) => {
                 const c = COLORS[k] || "#6c757d";
                 return `<span class="ad-badge" style="background:${c}20;color:${c};border:1px solid ${c}50">${k}: ${v}</span>`;
             }).join(" ");
         }
 
-        // Lista narzędzi przy agent_init
+        // Enhanced pseudonymization complete with methods used
+        if (type === "pseudonymize_complete" && typeof data === "object" && data.methods_used) {
+            let html = `<div style="margin-bottom:8px;">`;
+
+            // Methods used badges
+            if (data.methods_used && data.methods_used.length > 0) {
+                html += `<div style="margin-bottom:6px;"><strong>Methods used:</strong></div>`;
+                data.methods_used.forEach(method => {
+                    const color = method.includes('spaCy') ? '#6f42c1' :
+                                  method.includes('Manual') ? '#0d6efd' : '#198754';
+                    html += `<span class="ad-badge" style="background:${color}20;color:${color};border:1px solid ${color}50">
+                        ${method}
+                    </span> `;
+                });
+            }
+
+            html += `</div>`;
+
+            // Summary stats if available
+            if (data.summary) {
+                const s = data.summary;
+                html += `<div style="font-size:11px;color:#6c757d;">`;
+                html += `📊 ${s.total_replacements} replacements in ${Object.keys(s.categories || {}).length} categories`;
+                if (s.ner_enabled) {
+                    html += ` • NER: ${s.ner_model || 'enabled'}`;
+                }
+                html += `</div>`;
+            }
+
+            // Examples if available
+            if (data.examples && data.examples.length > 0) {
+                html += `<div style="margin-top:6px;">`;
+                html += `<div style="font-size:11px;color:#6c757d;margin-bottom:4px;">Examples:</div>`;
+                const firstFew = data.examples.slice(0, 3);
+                firstFew.forEach(example => {
+                    const [original, token] = example.split(' → ');
+                    html += `<div class="ad-diff">`;
+                    html += `<span class="ad-before">${frappe.utils.escape_html(original)}</span>`;
+                    html += ` <span class="ad-arrow">→</span> `;
+                    html += `<span class="ad-after">${frappe.utils.escape_html(token)}</span>`;
+                    html += `</div>`;
+                });
+                if (data.examples.length > 3) {
+                    html += `<div style="font-size:10px;color:#6c757d;margin-top:2px;">...and ${data.examples.length - 3} more</div>`;
+                }
+                html += `</div>`;
+            }
+
+            return html;
+        }
+
+        // Tool list at agent_init
         if (type === "agent_init" && Array.isArray(data)) {
             return data.map(n => {
                 const m = TOOL_META[n] || { icon: "🔧", color: "#6c757d" };
@@ -311,19 +427,62 @@ class AIAgentDemoPage {
             }).join(" ");
         }
 
-        // Obiekt / tablica – jako zwięzły JSON
+        // Object/array - as expandable, pretty JSON
         if (typeof data === "object") {
-            return `<code class="ad-json">${frappe.utils.escape_html(JSON.stringify(data))}</code>`;
+            return this._formatExpandableJson(data);
         }
 
-        // Zwykły string
+        // Regular string
         return `<span class="ad-mono">${frappe.utils.escape_html(String(data))}</span>`;
+    }
+
+    // -----------------------------------------------------------------------
+    // Expandable JSON formatting
+    // -----------------------------------------------------------------------
+    _formatExpandableJson(data) {
+        const jsonStr = JSON.stringify(data, null, 2);
+        const escaped = frappe.utils.escape_html(jsonStr);
+        const id = `json-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
+
+        // Check if JSON is large enough to warrant collapsing
+        if (jsonStr.length > 200 || jsonStr.split('\n').length > 8) {
+            const preview = jsonStr.split('\n').slice(0, 3).join('\n') + '\n  ...';
+            const escapedPreview = frappe.utils.escape_html(preview);
+
+            return `
+                <div class="ad-json-container">
+                    <div class="ad-json-header" onclick="this.parentElement.classList.toggle('expanded')">
+                        <span class="ad-json-toggle">▶</span>
+                        <span class="ad-json-label">{...} JSON Object (${Object.keys(data).length} keys)</span>
+                    </div>
+                    <div class="ad-json-preview">
+                        <pre class="ad-json-content">${escapedPreview}</pre>
+                    </div>
+                    <div class="ad-json-full">
+                        <pre class="ad-json-content">${escaped}</pre>
+                    </div>
+                </div>
+            `;
+        } else {
+            // Small JSON - show directly with syntax highlighting
+            const highlighted = this._highlightJson(escaped);
+            return `<pre class="ad-json-content ad-json-small">${highlighted}</pre>`;
+        }
+    }
+
+    _highlightJson(jsonStr) {
+        return jsonStr
+            .replace(/"([^"]+)"(\s*:)/g, '<span class="json-key">"$1"</span>$2')
+            .replace(/:\s*"([^"]*)"/g, ': <span class="json-string">"$1"</span>')
+            .replace(/:\s*(\d+)/g, ': <span class="json-number">$1</span>')
+            .replace(/:\s*(true|false)/g, ': <span class="json-boolean">$1</span>')
+            .replace(/:\s*(null)/g, ': <span class="json-null">$1</span>');
     }
 
 }
 
 // =============================================================================
-// CSS – wstrzykiwany raz, bez osobnego pliku (brak build step)
+// CSS - injected once, without separate file (no build step)
 // =============================================================================
 function _inject_styles() {
     if (document.getElementById("ad-css")) return;
@@ -375,6 +534,11 @@ function _inject_styles() {
 .ad-chip{padding:4px 10px;background:#f0f4ff;color:#4361ee;border:1px solid #c7d2fe;border-radius:20px;font-size:12px;cursor:pointer;transition:all .15s}
 .ad-chip:hover{background:#4361ee;color:#fff}
 
+/* no tools message */
+.ad-no-tools{display:flex;align-items:center;gap:12px;padding:16px 20px;background:#f8f9fa;border:1px solid #dee2e6;border-radius:8px;width:100%}
+.ad-no-tools-icon{font-size:24px;flex-shrink:0}
+.ad-no-tools-text{flex:1}
+
 /* spinner */
 .ad-spin{display:inline-block;width:13px;height:13px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:ad-spin .7s linear infinite}
 @keyframes ad-spin{to{transform:rotate(360deg)}}
@@ -407,6 +571,26 @@ function _inject_styles() {
 .ad-mono{font-family:monospace;background:rgba(0,0,0,.04);padding:2px 5px;border-radius:3px;word-break:break-all;font-size:11px}
 .ad-json{font-family:monospace;font-size:11px;background:rgba(0,0,0,.04);padding:2px 5px;border-radius:3px;word-break:break-all}
 .ad-muted{color:#6c757d;font-style:italic;font-size:11px}
+
+/* expandable json */
+.ad-json-container{margin-top:4px;border:1px solid #e9ecef;border-radius:4px;overflow:hidden}
+.ad-json-header{padding:6px 10px;background:#f8f9fa;cursor:pointer;display:flex;align-items:center;gap:6px;font-size:11px;font-weight:600;color:#495057;border-bottom:1px solid #e9ecef}
+.ad-json-header:hover{background:#e9ecef}
+.ad-json-toggle{transition:transform .2s;font-size:10px}
+.ad-json-container.expanded .ad-json-toggle{transform:rotate(90deg)}
+.ad-json-preview{display:block}
+.ad-json-full{display:none}
+.ad-json-container.expanded .ad-json-preview{display:none}
+.ad-json-container.expanded .ad-json-full{display:block}
+.ad-json-content{font-family:monospace;font-size:11px;line-height:1.4;margin:0;padding:8px;background:#fafafa;color:#333;white-space:pre-wrap;word-break:break-all}
+.ad-json-small{border:1px solid #e9ecef;border-radius:4px;background:#fafafa}
+
+/* json syntax highlighting */
+.json-key{color:#0066cc;font-weight:600}
+.json-string{color:#d14}
+.json-number{color:#099}
+.json-boolean{color:#0086b3}
+.json-null{color:#999;font-style:italic}
 
 @media(max-width:768px){.ad-grid{grid-template-columns:1fr}}
 `;

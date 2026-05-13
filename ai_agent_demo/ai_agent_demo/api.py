@@ -1,201 +1,116 @@
 """
-Frappe API endpoints.
-
-Główny przepływ run_agent():
-    1. Wykryj PII w zapytaniu
-    2. Zakoduj PII → tokeny (ReversibleAnonymizer.encode)
-    3. Wyślij ZAKODOWANE zapytanie do LLM
-    4. Odbierz ZAKODOWNĄ odpowiedź z LLM
-    5. Odkoduj tokeny → oryginalne dane (ReversibleAnonymizer.decode)
-    6. Zwróć odkodowaną odpowiedź użytkownikowi
-
-LLM nigdy nie widzi oryginalnych danych osobowych.
+Frappe API endpoints for AI Agent Demo.
 """
 from __future__ import annotations
 
-import json
-
+import requests
 import frappe
 from frappe import _
 
-from .core.agent import Agent
-from .core.anonymizer import DataAnonymizer, ReversibleAnonymizer
-from .core.local_model import LocalModel
-from .core.tools import get_default_tools
+from .core.tools import get_available_tools as get_tools_list
+from .core.agent import BusinessAgent
 
 
-def _make_agent() -> Agent:
-    agent = Agent(model_name="llama3.2")
-    for tool in get_default_tools():
-        agent.register_tool(tool)
-    return agent
-
-
-# ---------------------------------------------------------------------------
-# GŁÓWNY ENDPOINT – pipeline z kodowaniem i odkodowaniem
-# ---------------------------------------------------------------------------
-
-@frappe.whitelist()
-def run_agent(query: str, session_name: str | None = None) -> dict:
-    """
-    Uruchamia agenta z automatyczną anonimizacją wejścia/wyjścia.
-
-    Przepływ:
-        query (oryginalny)
-            ↓ encode()
-        encoded_query (tokeny zamiast PII)
-            ↓ LLM
-        encoded_answer
-            ↓ decode()
-        decoded_answer (oryginalne dane przywrócone)
-    """
-    if not query:
-        frappe.throw(_("Zapytanie nie może być puste."))
-
-    logs: list[dict] = []
-    def emit(type_: str, label: str, data=None):
-        logs.append({"type": type_, "label": label, "data": data})
-
-    anon = ReversibleAnonymizer()
-
-    # ------------------------------------------------------------------
-    # KROK 1: Wejście oryginalne
-    # ------------------------------------------------------------------
-    emit("input", "Odebrano oryginalne zapytanie użytkownika", query)
-
-    # ------------------------------------------------------------------
-    # KROK 2: Wykrycie PII
-    # ------------------------------------------------------------------
-    findings = anon.preview(query)
-    if findings:
-        emit("detect", "Wykryto dane osobowe — wymagane kodowanie przed LLM", findings)
-    else:
-        emit("detect", "Brak danych osobowych w zapytaniu", {})
-
-    # ------------------------------------------------------------------
-    # KROK 3: Kodowanie PII → tokeny
-    # ------------------------------------------------------------------
-    encoded_query, token_map = anon.encode(query)
-
-    if token_map:
-        emit("encode",
-             "Kodowanie: PII zastąpione tokenami [TYPE_N] — LLM zobaczy tylko tokeny",
-             encoded_query)
-        emit("token_map",
-             "Mapa tokenów przechowywana LOKALNIE (nie trafia do LLM)",
-             token_map)
-    else:
-        emit("encode", "Brak PII — zapytanie wysyłane bez zmian", encoded_query)
-
-    # ------------------------------------------------------------------
-    # KROK 4: Agent działa na ZAKODOWANYM tekście
-    # ------------------------------------------------------------------
-    tools = get_default_tools()
-    emit("agent_init",
-         f"Agent zainicjalizowany z {len(tools)} narzędziami",
-         [t.name for t in tools])
-
-    emit("model_req",
-         "→ LocalModel.chat() — wysyłam ZAKODOWANE zapytanie do llama3.2",
-         f"LLM widzi: \"{encoded_query}\"")
-
-    agent  = _make_agent()
-    result = agent.run(encoded_query)  # ← LLM operuje na tokenach!
-
-    # ------------------------------------------------------------------
-    # KROK 5: Logi per-krok agenta
-    # ------------------------------------------------------------------
-    for i, step in enumerate(result.get("steps", [])):
-        sn        = i + 1
-        tool_name = step.get("tool_name")
-        thought   = step.get("thought", "")
-        obs       = step.get("observation", "")
-
-        emit("think",
-             f"Krok {sn} — Myśl modelu (model widzi tokeny, nie oryginalne dane)",
-             thought)
-
-        if tool_name:
-            emit("tool_select", f"Krok {sn} — Wybrane narzędzie", tool_name)
-            emit("tool_input",  f"Krok {sn} — Parametry narzędzia", step.get("tool_input", {}))
-            emit("tool_output", f"Krok {sn} — Wynik narzędzia (Observe)", obs)
-            if i + 1 < len(result.get("steps", [])):
-                emit("model_req",
-                     f"→ LocalModel.chat() — obserwacja kroku {sn} → decyzja co dalej",
-                     "Historia + wynik narzędzia → model")
-
-    # ------------------------------------------------------------------
-    # KROK 6: Odpowiedź z LLM (zakodowana)
-    # ------------------------------------------------------------------
-    encoded_answer = result.get("answer", "")
-    emit("model_out",
-         "← Odpowiedź LLM (może zawierać tokeny [TYPE_N])",
-         encoded_answer)
-
-    # ------------------------------------------------------------------
-    # KROK 7: Odkodowanie – tokeny → oryginalne dane
-    # ------------------------------------------------------------------
-    decoded_answer = anon.decode(encoded_answer, token_map)
-
-    used_tokens = {t: v for t, v in token_map.items() if t in encoded_answer}
-    if used_tokens:
-        emit("decode",
-             "Odkodowanie: zamieniam tokeny → oryginalne wartości",
-             {"odpowiedź_zakodowana": encoded_answer,
-              "odpowiedź_odkodowana": decoded_answer,
-              "podstawione_tokeny":   used_tokens})
-    else:
-        emit("decode",
-             "Odkodowanie: w odpowiedzi LLM nie wystąpiły tokeny",
-             decoded_answer)
-
-    # ------------------------------------------------------------------
-    # KROK 8: Wynik końcowy
-    # ------------------------------------------------------------------
-    emit("finish",
-         "✅ Wynik końcowy przekazany użytkownikowi (odkodowany)",
-         decoded_answer)
-
-    result["answer"]        = decoded_answer
-    result["encoded_query"] = encoded_query
-    result["token_map"]     = token_map
-    result["pipeline_log"] = logs
-
-    _save_log(query=query, result=result, session_name=session_name)
-    return result
-
-
-# ---------------------------------------------------------------------------
-# Pozostałe endpointy
-# ---------------------------------------------------------------------------
-
-@frappe.whitelist()
-def anonymize_text(text: str, data_types: str | list | None = None) -> dict:
-    if not text:
-        return {"original": "", "anonymized": "", "findings": {}}
-    if isinstance(data_types, str):
-        data_types = json.loads(data_types) if data_types else None
-    a = DataAnonymizer()
-    return {"original": text, "anonymized": a.anonymize(text, data_types), "findings": a.preview(text)}
+def _check_ollama_status() -> dict:
+    """Check if Ollama is available and get models."""
+    try:
+        # Check if Ollama is running
+        response = requests.get("http://localhost:11434/api/version", timeout=3)
+        if response.status_code == 200:
+            # Get available models
+            models_response = requests.get("http://localhost:11434/api/tags", timeout=3)
+            if models_response.status_code == 200:
+                models_data = models_response.json()
+                models = [model["name"] for model in models_data.get("models", [])]
+                return {
+                    "available": True,
+                    "models": models,
+                    "version": response.json().get("version", "unknown")
+                }
+        return {"available": False, "models": [], "error": "API not responding"}
+    except requests.RequestException as e:
+        return {"available": False, "models": [], "error": str(e)}
 
 
 @frappe.whitelist()
 def get_agent_status() -> dict:
-    m = LocalModel()
-    ok = m.is_available()
-    return {"ollama_available": ok, "models": m.list_models() if ok else [], "default_model": m.model_name}
+    """Get current agent status."""
+    ollama_status = _check_ollama_status()
+
+    return {
+        "ollama_available": ollama_status["available"],
+        "models": ollama_status["models"],
+        "default_model": "llama3.2" if "llama3.2:latest" in ollama_status["models"] else "none",
+        "ollama_version": ollama_status.get("version", "unknown"),
+        "message": "Ollama connected" if ollama_status["available"] else f"Ollama offline: {ollama_status.get('error', 'unknown error')}"
+    }
 
 
 @frappe.whitelist()
 def get_available_tools() -> list:
-    return _make_agent().registry.list_tools()
+    """Get list of available tools."""
+    tools = get_tools_list()
+    return [
+        {
+            "name": tool.get("name", "unknown"),
+            "description": tool.get("description", "No description")
+        }
+        for tool in tools
+    ]
+
+
+@frappe.whitelist()
+def run_agent(query: str, session_name: str | None = None) -> dict:
+    """
+    Run agent with given query.
+
+    Args:
+        query: User query
+        session_name: Optional session name
+
+    Returns:
+        Result dict with answer and pipeline_log
+    """
+    if not query:
+        frappe.throw(_("Query cannot be empty."))
+
+    try:
+        # Create business agent
+        agent = BusinessAgent()
+
+        # Execute query
+        result = agent.run(query)
+
+        # Save log if session provided
+        if session_name and result.get("answer"):
+            _save_log(
+                query=query,
+                result=result,
+                session_name=session_name
+            )
+
+        return result
+
+    except Exception as e:
+        frappe.log_error(f"Agent execution failed: {str(e)}")
+        return {
+            "answer": f"Agent execution failed: {str(e)}",
+            "pipeline_log": [
+                {
+                    "type": "error",
+                    "message": "Agent execution failed",
+                    "data": str(e)
+                }
+            ]
+        }
 
 
 @frappe.whitelist()
 def create_session() -> str:
+    """Create new agent session."""
     doc = frappe.get_doc({
         "doctype": "Agent Session",
-        "title": f"Sesja {frappe.utils.now_datetime().strftime('%Y-%m-%d %H:%M')}",
+        "title": f"Session {frappe.utils.now_datetime().strftime('%Y-%m-%d %H:%M')}",
         "status": "Active",
         "model_name": "llama3.2",
     })
@@ -203,8 +118,11 @@ def create_session() -> str:
     return doc.name
 
 
-def _save_log(query, result, session_name):
+def _save_log(query: str, result: dict, session_name: str | None = None):
+    """Save agent execution log to database."""
     try:
+        import json
+
         frappe.get_doc({
             "doctype": "Agent Log",
             "session": session_name,
@@ -214,4 +132,4 @@ def _save_log(query, result, session_name):
             "steps_count": len(result.get("steps", [])),
         }).insert(ignore_permissions=True)
     except Exception:
-        pass
+        pass  # Don't fail the main operation if logging fails
