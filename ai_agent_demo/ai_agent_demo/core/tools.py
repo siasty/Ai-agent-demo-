@@ -309,9 +309,21 @@ Focus on:
             # pseudonymizer already created above for detection method info
             pseudonymized_data = pseudonymizer.pseudonymize_sales_order(raw_data)
 
+            # Debug: Show what was actually detected and mapped
+            detection_details = []
+            for original, token in list(pseudonymizer.mapping.items()):
+                detection_details.append(f"'{original}' → {token}")
+
+            log_step("debug_detection", "🔍 DEBUG: What spaCy/patterns detected and mapped", {
+                "total_mappings": len(pseudonymizer.mapping),
+                "all_mappings": detection_details,
+                "spacy_used": getattr(pseudonymizer, '_used_spacy_ner', False),
+                "manual_used": getattr(pseudonymizer, '_used_manual_patterns', False)
+            })
+
             # Show examples of pseudonymization
             examples = []
-            for original, token in list(pseudonymizer.mapping.items())[:5]:
+            for original, token in list(pseudonymizer.mapping.items()):
                 examples.append(f"{original} → {token}")
 
             summary = pseudonymizer.get_pseudonymization_summary()

@@ -84,7 +84,6 @@ app_license = "mit"
 
 # before_install = "ai_agent_demo.install.before_install"
 # after_install = "ai_agent_demo.install.after_install"
-after_migrate = "ai_agent_demo.ai_agent_demo.setup.after_migrate"
 
 # Workspaces
 # ----------

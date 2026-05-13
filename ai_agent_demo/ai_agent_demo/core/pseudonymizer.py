@@ -61,9 +61,9 @@ class BusinessPseudonymizer:
         if self.use_ner:
             try:
                 self.ner_detector = SpacyNERDetector()
-                print("✅ NER-based sensitive data detection enabled")
             except Exception as e:
-                print(f"⚠️ Failed to initialize NER detector: {e}")
+                import frappe
+                frappe.log_error(f"Failed to initialize SpacyNERDetector: {str(e)}")
                 self.use_ner = False
 
     def _generate_token(self, data_type: str, original: str) -> str:
@@ -296,47 +296,6 @@ class BusinessPseudonymizer:
 
         return result
 
-    def _pseudonymize_field_smart(self, text: str, field_type: str) -> str:
-        """
-        Automated field pseudonymization using spaCy NER - pure AI/NLP approach.
-
-        Args:
-            text: Text to pseudonymize
-            field_type: Expected field type (for fallback only)
-        """
-        if not text or not text.strip():
-            return text
-
-        # Use ONLY spaCy NER when available - full automation
-        if self.use_ner and self.ner_detector:
-            self._used_spacy_ner = True
-            # Pure spaCy approach - let AI detect and pseudonymize everything
-            return self.pseudonymize_text_auto(text)
-        else:
-            # Only when spaCy completely unavailable, use manual patterns
-            return self._pseudonymize_field_manual(text, field_type)
-
-    def _pseudonymize_field_manual(self, text: str, field_type: str) -> str:
-        """Manual field pseudonymization based on expected field type."""
-        self._used_manual_patterns = True
-
-        if field_type == "organization":
-            return self._pseudonymize_company_name(text)
-        elif field_type == "email":
-            return self._pseudonymize_email(text)
-        elif field_type == "phone":
-            return self._pseudonymize_phone(text)
-        elif field_type == "address":
-            return self._pseudonymize_address(text)
-        elif field_type == "person":
-            return self._pseudonymize_person_name(text)
-        elif field_type == "text":
-            # For free text, use fallback regex patterns
-            return self._pseudonymize_text_fallback(text)
-        else:
-            # Generic tokenization
-            return self._generate_token("person", text)
-
     def depseudonymize_text(self, text: str) -> str:
         """Replace pseudonyms back with original data in analysis result."""
         result = text
@@ -417,45 +376,26 @@ class BusinessPseudonymizer:
             Pseudonymized text with detected entities replaced
         """
         if not self.use_ner or not self.ner_detector:
-            print("⚠️ NER not available, falling back to manual patterns")
             return self._pseudonymize_text_fallback(text)
 
-        # Mark that we're using spaCy NER
         self._used_spacy_ner = True
 
-        # Detect sensitive entities
         entities = self.ner_detector.detect_entities(text)
-
         if not entities:
             return text
 
-        # Sort entities by position (reverse to avoid offset issues)
+        # Reverse-sort by position so offsets stay valid as we replace
         entities.sort(key=lambda e: e.start, reverse=True)
 
         result = text
-        replacements = []
-
         for entity in entities:
-            # Map entity labels to our token types
+            # Custom regex patterns also count as a detection method used
+            if entity.label in self.ner_detector.custom_patterns:
+                self._used_manual_patterns = True
+
             token_type = self._map_entity_to_token_type(entity.label)
-
-            # Generate pseudonym
             pseudonym = self._generate_token(token_type, entity.text)
-
-            # Replace in text
             result = result[:entity.start] + pseudonym + result[entity.end:]
-
-            replacements.append({
-                "original": entity.text,
-                "pseudonym": pseudonym,
-                "type": token_type,
-                "label": entity.label,
-                "position": (entity.start, entity.end)
-            })
-
-        # Log replacements for debugging
-        if replacements:
-            print(f"🔒 NER pseudonymized {len(replacements)} entities")
 
         return result
 
@@ -470,6 +410,8 @@ class BusinessPseudonymizer:
             "DATE": "person",  # Dates might reveal personal info
             "EMAIL": "email",
             "PHONE": "phone",
+            "FACILITY": "location",
+            "ZIPCODE": "location",
             "IBAN": "financial",
             "SSN": "person",
             "CREDIT_CARD": "financial",
@@ -500,23 +442,3 @@ class BusinessPseudonymizer:
 
         return result
 
-    def analyze_text_sensitivity(self, text: str) -> Dict[str, Any]:
-        """
-        Analyze text for sensitive data without pseudonymizing.
-
-        Returns:
-            Analysis of detected sensitive entities
-        """
-        if not self.use_ner or not self.ner_detector:
-            return {"error": "NER not available", "entities": []}
-
-        return self.ner_detector.analyze_text_sensitivity(text)
-
-    def get_ner_info(self) -> Dict[str, Any]:
-        """Get information about the NER model."""
-        if not self.ner_detector:
-            return {"available": False}
-
-        info = self.ner_detector.get_model_info()
-        info["available"] = True
-        return info

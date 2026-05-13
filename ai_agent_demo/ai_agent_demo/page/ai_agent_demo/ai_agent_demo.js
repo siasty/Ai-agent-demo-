@@ -1,9 +1,9 @@
 // =============================================================================
 // AI Agent Demo – Frappe Page (plain JS, no build step needed)
 //
-// Shows pipeline_log step by step:
-//   INPUT → PRE-PROCESS → DETECT → AGENT INIT → MODEL → THINK →
-//   TOOL SELECT → TOOL INPUT → TOOL OUTPUT → FINISH
+// Renders the pipeline_log returned by ai_agent_demo.api.run_agent step by step:
+//   INPUT → THINK → TOOL SELECT → DATA FETCH → DETECT SENSITIVE →
+//   PSEUDONYMIZE → AI ANALYSIS → DEPSEUDONYMIZE → FINAL RESPONSE
 // =============================================================================
 
 frappe.pages["ai-agent-demo"].on_page_load = function (wrapper) {
@@ -24,43 +24,40 @@ const TOOL_META = {
     check_customer_credit_history: { icon: "💳", color: "#dc3545" },
 };
 
-// Log event type configuration
+// Log event type configuration — must match step_type values emitted by the backend
+// (see ai_agent_demo/core/agent.py and ai_agent_demo/core/tools.py).
 const LOG_CFG = {
-    input:                    { icon: "📥", color: "#0d6efd",  bg: "#f0f7ff", title: "INPUT" },
-    preprocess:               { icon: "⚙️",  color: "#6f42c1",  bg: "#f8f5ff", title: "PRE-PROCESSING" },
-    detect:                   { icon: "🔍", color: "#fd7e14",  bg: "#fff8f0", title: "DATA DETECTION" },
-    agent_init:               { icon: "🤖", color: "#0dcaf0",  bg: "#f0feff", title: "AGENT INIT" },
-    model_req:                { icon: "➡️",  color: "#6c757d",  bg: "#f8f9fa", title: "MODEL REQUEST" },
-    think:                    { icon: "💭", color: "#856404",  bg: "#fffbef", title: "THINK (REASON)" },
-    tool_select:              { icon: "🎯", color: "#4361ee",  bg: "#f0f4ff", title: "TOOL SELECTION (ACT)" },
-    tool_input:               { icon: "↘️",  color: "#4361ee",  bg: "#eef1ff", title: "INPUT PARAMETERS" },
+    // Agent loop
+    input:                   { icon: "📥", color: "#0d6efd", bg: "#f0f7ff", title: "INPUT" },
+    think:                   { icon: "💭", color: "#856404", bg: "#fffbef", title: "THINK (REASON)" },
+    tool_select:             { icon: "🎯", color: "#4361ee", bg: "#f0f4ff", title: "TOOL SELECTION (ACT)" },
+    tool_input:              { icon: "↘️", color: "#4361ee", bg: "#eef1ff", title: "INPUT PARAMETERS" },
+    tool_output:             { icon: "↙️", color: "#198754", bg: "#f0fff4", title: "TOOL RESULT (OBSERVE)" },
+    no_tool:                 { icon: "❔", color: "#856404", bg: "#fffbef", title: "NO TOOL MATCHED" },
+    tool_error:              { icon: "❌", color: "#dc3545", bg: "#fff5f5", title: "TOOL ERROR" },
+    error:                   { icon: "❌", color: "#dc3545", bg: "#fff5f5", title: "ERROR" },
 
-    // ERP Data Fetching
-    data_fetch:               { icon: "🗃️",  color: "#0d6efd",  bg: "#f0f7ff", title: "ERP DATA FETCH" },
-    sensitive_data_detected:  { icon: "🤖", color: "#6f42c1",  bg: "#f8f5ff", title: "AI AUTOMATED DETECTION" },
+    // ERP + sensitive data detection
+    data_fetch:              { icon: "🗃️", color: "#0d6efd", bg: "#f0f7ff", title: "ERP DATA FETCH" },
+    sensitive_data_detected: { icon: "🤖", color: "#6f42c1", bg: "#f8f5ff", title: "AI AUTOMATED DETECTION" },
 
-    // Pseudonymization Process
-    pseudonymize_start:       { icon: "🔒", color: "#dc3545",  bg: "#fff5f5", title: "PSEUDONYMIZATION START" },
-    pseudonymize_complete:    { icon: "✅", color: "#dc3545",  bg: "#fff5f5", title: "PSEUDONYMIZATION COMPLETE" },
-    ai_input_data:           { icon: "🤖", color: "#28a745",  bg: "#f0fff4", title: "AI INPUT DATA (SAFE)" },
+    // Pseudonymization
+    pseudonymize_start:      { icon: "🔒", color: "#dc3545", bg: "#fff5f5", title: "PSEUDONYMIZATION START" },
+    debug_detection:         { icon: "🐛", color: "#6c757d", bg: "#f8f9fa", title: "DETECTION DEBUG" },
+    pseudonymize_complete:   { icon: "✅", color: "#dc3545", bg: "#fff5f5", title: "PSEUDONYMIZATION COMPLETE" },
+    ai_input_data:           { icon: "🤖", color: "#28a745", bg: "#f0fff4", title: "AI INPUT DATA (SAFE)" },
 
-    // AI Processing
-    llm_analysis:            { icon: "🧠", color: "#6f42c1",  bg: "#f8f5ff", title: "AI ANALYSIS" },
-    llm_response:            { icon: "💬", color: "#6f42c1",  bg: "#f8f5ff", title: "AI RESPONSE" },
-    token_check:             { icon: "🔍", color: "#856404",  bg: "#fffbef", title: "TOKEN CHECK" },
+    // LLM analysis
+    llm_analysis:            { icon: "🧠", color: "#6f42c1", bg: "#f8f5ff", title: "AI ANALYSIS" },
+    llm_response:            { icon: "💬", color: "#6f42c1", bg: "#f8f5ff", title: "AI RESPONSE" },
+    token_check:             { icon: "🔍", color: "#856404", bg: "#fffbef", title: "TOKEN CHECK" },
 
-    // Depseudonymization
-    depseudonymize:          { icon: "🔓", color: "#198754",  bg: "#f0fff4", title: "DEPSEUDONYMIZATION" },
-    depseudonymize_changes:  { icon: "🔄", color: "#198754",  bg: "#f0fff4", title: "RESTORE IDENTIFIERS" },
-    final_response:          { icon: "📊", color: "#198754",  bg: "#e8f8ee", title: "FINAL BUSINESS ANALYSIS" },
-
-    // Legacy/General
-    anon_start:              { icon: "🔎", color: "#dc3545",  bg: "#fff5f5", title: "ANONYMIZATION START" },
-    anonymize_change:        { icon: "🔒", color: "#dc3545",  bg: "#fff5f5", title: "CHANGE" },
-    anon_done:               { icon: "✔️",  color: "#198754",  bg: "#f0fff4", title: "ANONYMIZATION OK" },
-    tool_output:             { icon: "↙️",  color: "#198754",  bg: "#f0fff4", title: "TOOL RESULT (OBSERVE)" },
-    complete:                { icon: "✅", color: "#198754",  bg: "#e8f8ee", title: "COMPLETE" },
-    finish:                  { icon: "✅", color: "#198754",  bg: "#e8f8ee", title: "FINAL ANSWER" },
+    // Depseudonymization + finalization
+    depseudonymize:          { icon: "🔓", color: "#198754", bg: "#f0fff4", title: "DEPSEUDONYMIZATION" },
+    depseudonymize_changes:  { icon: "🔄", color: "#198754", bg: "#f0fff4", title: "RESTORE IDENTIFIERS" },
+    final_response:          { icon: "📊", color: "#198754", bg: "#e8f8ee", title: "FINAL BUSINESS ANALYSIS" },
+    complete:                { icon: "✅", color: "#198754", bg: "#e8f8ee", title: "COMPLETE" },
+    finish:                  { icon: "✅", color: "#198754", bg: "#e8f8ee", title: "FINAL ANSWER" },
 };
 
 // ---------------------------------------------------------------------------
@@ -167,7 +164,7 @@ class AIAgentDemoPage {
     }
 
     // -----------------------------------------------------------------------
-    // Status Ollamy
+    // Ollama status
     // -----------------------------------------------------------------------
     _load_status() {
         frappe.call({
@@ -177,7 +174,7 @@ class AIAgentDemoPage {
                 if (s.ollama_available) {
                     this.$el.find("#ad-dot").addClass("online");
                     this.$el.find("#ad-status-txt").text("Ollama: connected");
-                    this.$el.find("#ad-model-list").text(`Modele: ${(s.models || []).slice(0, 3).join(", ")}`);
+                    this.$el.find("#ad-model-list").text(`Models: ${(s.models || []).slice(0, 3).join(", ")}`);
                 } else {
                     this.$el.find("#ad-dot").addClass("offline");
                     this.$el.find("#ad-status-txt").html("Ollama offline – <code>ollama serve</code> + <code>ollama pull llama3.2</code>");
@@ -210,7 +207,7 @@ class AIAgentDemoPage {
     }
 
     // -----------------------------------------------------------------------
-    // Uruchomienie agenta
+    // Run agent
     // -----------------------------------------------------------------------
     _run() {
         const query = this.$el.find("#ad-query").val().trim();
@@ -225,7 +222,7 @@ class AIAgentDemoPage {
 
         $log.append(`<div class="ad-entry ad-thinking">
   <span class="ad-spin" style="border-color:rgba(0,0,0,.1);border-top-color:#4361ee"></span>
-  <span>Agent przetwarza zapytanie…</span>
+  <span>Agent is processing the query…</span>
 </div>`);
 
         frappe.call({
@@ -233,7 +230,7 @@ class AIAgentDemoPage {
             args: { query, session_name: this.session },
             callback: (r) => {
                 $btn.prop("disabled", false);
-                this.$el.find("#ad-btn-label").html("▶ Uruchom");
+                this.$el.find("#ad-btn-label").html("▶ Run");
                 $log.empty();
                 if (r.message) {
                     this._render_log(r.message.pipeline_log || []);
@@ -241,10 +238,10 @@ class AIAgentDemoPage {
             },
             error: () => {
                 $btn.prop("disabled", false);
-                this.$el.find("#ad-btn-label").html("▶ Uruchom");
+                this.$el.find("#ad-btn-label").html("▶ Run");
                 $log.html(`<div class="ad-entry" style="background:#fff5f5;border-left:3px solid #dc3545">
   <div class="ad-e-icon">❌</div>
-  <div><div class="ad-e-type" style="color:#dc3545">BŁĄD</div>
+  <div><div class="ad-e-type" style="color:#dc3545">ERROR</div>
   <div class="ad-e-label">Connection error with agent</div></div>
 </div>`);
             },
@@ -282,7 +279,7 @@ class AIAgentDemoPage {
   <div class="ad-e-icon">${cfg.icon}</div>
   <div class="ad-e-body">
     <div class="ad-e-type" style="color:${cfg.color}">${cfg.title}</div>
-    <div class="ad-e-label">${frappe.utils.escape_html(e.label)}</div>
+    <div class="ad-e-label">${frappe.utils.escape_html(e.message || "")}</div>
     ${dataHtml ? `<div class="ad-e-data">${dataHtml}</div>` : ""}
   </div>
 </div>`;
@@ -293,20 +290,6 @@ class AIAgentDemoPage {
     // -----------------------------------------------------------------------
     _fmt(data, type) {
         if (data === null || data === undefined || data === "") return "";
-
-        // Anonymization - show before → after for each sample
-        if (type === "anonymize_change") {
-            if (typeof data === "object" && Array.isArray(data.samples)) {
-                const rows = data.samples.map(s =>
-                    `<div class="ad-diff">`
-                    + `<span class="ad-before">${frappe.utils.escape_html(s.original)}</span>`
-                    + ` <span class="ad-arrow">→</span> `
-                    + `<span class="ad-after">${frappe.utils.escape_html(s.anonymized)}</span>`
-                    + `</div>`
-                ).join("");
-                return `<div class="ad-diffs">${rows}</div>`;
-            }
-        }
 
         // Enhanced sensitive data detection with method information
         if (type === "sensitive_data_detected" && typeof data === "object" && data.detection_method) {
@@ -358,16 +341,6 @@ class AIAgentDemoPage {
             return html;
         }
 
-        // Wykryte dane – kolorowe badges (legacy)
-        if (type === "detect" && typeof data === "object" && !Array.isArray(data)) {
-            if (!Object.keys(data).length) return `<span class="ad-muted">no personal data</span>`;
-            const COLORS = { email: "#0d6efd", phone: "#198754", ssn: "#dc3545", name: "#fd7e14" };
-            return Object.entries(data).map(([k, v]) => {
-                const c = COLORS[k] || "#6c757d";
-                return `<span class="ad-badge" style="background:${c}20;color:${c};border:1px solid ${c}50">${k}: ${v}</span>`;
-            }).join(" ");
-        }
-
         // Enhanced pseudonymization complete with methods used
         if (type === "pseudonymize_complete" && typeof data === "object" && data.methods_used) {
             let html = `<div style="margin-bottom:8px;">`;
@@ -400,9 +373,8 @@ class AIAgentDemoPage {
             // Examples if available
             if (data.examples && data.examples.length > 0) {
                 html += `<div style="margin-top:6px;">`;
-                html += `<div style="font-size:11px;color:#6c757d;margin-bottom:4px;">Examples:</div>`;
-                const firstFew = data.examples.slice(0, 3);
-                firstFew.forEach(example => {
+                html += `<div style="font-size:11px;color:#6c757d;margin-bottom:4px;">Examples (${data.examples.length} total):</div>`;
+                data.examples.forEach(example => {
                     const [original, token] = example.split(' → ');
                     html += `<div class="ad-diff">`;
                     html += `<span class="ad-before">${frappe.utils.escape_html(original)}</span>`;
@@ -410,21 +382,10 @@ class AIAgentDemoPage {
                     html += `<span class="ad-after">${frappe.utils.escape_html(token)}</span>`;
                     html += `</div>`;
                 });
-                if (data.examples.length > 3) {
-                    html += `<div style="font-size:10px;color:#6c757d;margin-top:2px;">...and ${data.examples.length - 3} more</div>`;
-                }
                 html += `</div>`;
             }
 
             return html;
-        }
-
-        // Tool list at agent_init
-        if (type === "agent_init" && Array.isArray(data)) {
-            return data.map(n => {
-                const m = TOOL_META[n] || { icon: "🔧", color: "#6c757d" };
-                return `<span class="ad-tool-tag" style="color:${m.color}">${m.icon} ${n}</span>`;
-            }).join(" ");
         }
 
         // Object/array - as expandable, pretty JSON
