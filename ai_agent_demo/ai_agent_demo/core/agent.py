@@ -161,6 +161,7 @@ For sales risk analysis questions, use analyze_sales_order."""
 
             tool_prompt = self._create_tool_selection_prompt(user_query)
             log_step("think", "AI reasoning about tool selection")
+            log_step("ai_prompt", "Prompt sent to AI for tool selection", tool_prompt)
 
             llm_response = self._call_llm(tool_prompt)
 
@@ -236,7 +237,7 @@ For sales risk analysis questions, use analyze_sales_order."""
             else:
                 answer = str(tool_result)
 
-            log_step("finish", "Analysis completed", answer[:100] + "..." if len(answer) > 100 else answer)
+            log_step("finish", "Analysis completed", answer)
 
             return {
                 "answer": answer,

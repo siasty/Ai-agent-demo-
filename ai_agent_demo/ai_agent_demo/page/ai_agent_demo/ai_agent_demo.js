@@ -49,6 +49,7 @@ const LOG_CFG = {
 
     // LLM analysis
     llm_analysis:            { icon: "🧠", color: "#6f42c1", bg: "#f8f5ff", title: "AI ANALYSIS" },
+    ai_prompt:               { icon: "📝", color: "#495057", bg: "#f8f9fa", title: "AI PROMPT" },
     llm_response:            { icon: "💬", color: "#6f42c1", bg: "#f8f5ff", title: "AI RESPONSE" },
     token_check:             { icon: "🔍", color: "#856404", bg: "#fffbef", title: "TOKEN CHECK" },
 
@@ -291,6 +292,27 @@ class AIAgentDemoPage {
     _fmt(data, type) {
         if (data === null || data === undefined || data === "") return "";
 
+        // Try to detect and parse JSON strings in AI responses
+        if (typeof data === "string" && (type === "llm_response" || type === "llm_analysis" || type === "final_response" || type === "finish" || type === "ai_input_data")) {
+            // First check if the entire string is JSON
+            const trimmed = data.trim();
+            if ((trimmed.startsWith('{') && trimmed.endsWith('}')) ||
+                (trimmed.startsWith('[') && trimmed.endsWith(']'))) {
+                try {
+                    const parsed = JSON.parse(trimmed);
+                    return this._formatExpandableJson(parsed);
+                } catch (e) {
+                    // Not valid JSON, continue with partial detection
+                }
+            }
+
+            // Then look for JSON within the string
+            const jsonMatch = this._detectJsonInString(data);
+            if (jsonMatch) {
+                return this._formatAiResponseWithJson(data, jsonMatch);
+            }
+        }
+
         // Enhanced sensitive data detection with method information
         if (type === "sensitive_data_detected" && typeof data === "object" && data.detection_method) {
             let html = `<div style="margin-bottom:8px;">`;
@@ -401,6 +423,10 @@ class AIAgentDemoPage {
     // Expandable JSON formatting
     // -----------------------------------------------------------------------
     _formatExpandableJson(data) {
+        return this._formatExpandableJsonWithHeader(data, null);
+    }
+
+    _formatExpandableJsonWithHeader(data, headerText) {
         const jsonStr = JSON.stringify(data, null, 2);
         const escaped = frappe.utils.escape_html(jsonStr);
         const id = `json-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
@@ -410,11 +436,16 @@ class AIAgentDemoPage {
             const preview = jsonStr.split('\n').slice(0, 3).join('\n') + '\n  ...';
             const escapedPreview = frappe.utils.escape_html(preview);
 
+            // Use custom header if provided, otherwise default
+            const label = headerText ?
+                `${headerText} ({...} JSON Object, ${Object.keys(data).length} keys)` :
+                `{...} JSON Object (${Object.keys(data).length} keys)`;
+
             return `
                 <div class="ad-json-container">
                     <div class="ad-json-header" onclick="this.parentElement.classList.toggle('expanded')">
                         <span class="ad-json-toggle">▶</span>
-                        <span class="ad-json-label">{...} JSON Object (${Object.keys(data).length} keys)</span>
+                        <span class="ad-json-label">${frappe.utils.escape_html(label)}</span>
                     </div>
                     <div class="ad-json-preview">
                         <pre class="ad-json-content">${escapedPreview}</pre>
@@ -427,7 +458,8 @@ class AIAgentDemoPage {
         } else {
             // Small JSON - show directly with syntax highlighting
             const highlighted = this._highlightJson(escaped);
-            return `<pre class="ad-json-content ad-json-small">${highlighted}</pre>`;
+            const header = headerText ? `<div style="font-weight: 600; margin-bottom: 4px; color: #495057;">${frappe.utils.escape_html(headerText)}</div>` : '';
+            return `${header}<pre class="ad-json-content ad-json-small">${highlighted}</pre>`;
         }
     }
 
@@ -438,6 +470,117 @@ class AIAgentDemoPage {
             .replace(/:\s*(\d+)/g, ': <span class="json-number">$1</span>')
             .replace(/:\s*(true|false)/g, ': <span class="json-boolean">$1</span>')
             .replace(/:\s*(null)/g, ': <span class="json-null">$1</span>');
+    }
+
+    // -----------------------------------------------------------------------
+    // JSON detection and AI response formatting
+    // -----------------------------------------------------------------------
+    _detectJsonInString(text) {
+        // More sophisticated JSON detection that handles nested structures
+        const findJsonBounds = (text, startChar, endChar) => {
+            const results = [];
+            let depth = 0;
+            let start = -1;
+            let inString = false;
+            let escaped = false;
+
+            for (let i = 0; i < text.length; i++) {
+                const char = text[i];
+
+                if (escaped) {
+                    escaped = false;
+                    continue;
+                }
+
+                if (char === '\\') {
+                    escaped = true;
+                    continue;
+                }
+
+                if (char === '"' && !escaped) {
+                    inString = !inString;
+                    continue;
+                }
+
+                if (!inString) {
+                    if (char === startChar) {
+                        if (depth === 0) start = i;
+                        depth++;
+                    } else if (char === endChar) {
+                        depth--;
+                        if (depth === 0 && start !== -1) {
+                            const candidate = text.substring(start, i + 1);
+                            try {
+                                const parsed = JSON.parse(candidate);
+                                results.push({
+                                    raw: candidate,
+                                    parsed: parsed,
+                                    start: start,
+                                    end: i + 1
+                                });
+                            } catch (e) {
+                                // Not valid JSON, continue
+                            }
+                            start = -1;
+                        }
+                    }
+                }
+            }
+            return results;
+        };
+
+        // Look for JSON objects
+        const objects = findJsonBounds(text, '{', '}');
+        if (objects.length > 0) {
+            return objects[0]; // Return the first valid JSON object
+        }
+
+        // Look for JSON arrays
+        const arrays = findJsonBounds(text, '[', ']');
+        if (arrays.length > 0) {
+            return arrays[0]; // Return the first valid JSON array
+        }
+
+        return null;
+    }
+
+    _formatAiResponseWithJson(text, jsonMatch) {
+        const beforeJson = text.substring(0, jsonMatch.start);
+        const afterJson = text.substring(jsonMatch.end);
+
+        let html = '';
+
+        // Check if text before JSON is just a simple header
+        const headerPatterns = [
+            /^Sales Order Analysis Results:\s*$/i,
+            /^Credit Analysis for .+:\s*$/i,
+            /^Analysis Results:\s*$/i,
+            /^Results:\s*$/i
+        ];
+
+        const isSimpleHeader = headerPatterns.some(pattern =>
+            pattern.test(beforeJson.trim())
+        );
+
+        // For simple headers, integrate into JSON container
+        if (beforeJson.trim() && isSimpleHeader) {
+            const headerText = beforeJson.trim().replace(/:\s*$/, '');
+            html += this._formatExpandableJsonWithHeader(jsonMatch.parsed, headerText);
+        } else {
+            // Add text before JSON if it's not a simple header
+            if (beforeJson.trim()) {
+                html += `<div style="margin-bottom: 8px;">${frappe.utils.escape_html(beforeJson.trim())}</div>`;
+            }
+            // Add expandable JSON
+            html += this._formatExpandableJson(jsonMatch.parsed);
+        }
+
+        // Add text after JSON
+        if (afterJson.trim()) {
+            html += `<div style="margin-top: 8px;">${frappe.utils.escape_html(afterJson.trim())}</div>`;
+        }
+
+        return html;
     }
 
 }
@@ -552,6 +695,12 @@ function _inject_styles() {
 .json-number{color:#099}
 .json-boolean{color:#0086b3}
 .json-null{color:#999;font-style:italic}
+
+/* AI response enhancements */
+.ad-entry[style*="f8f5ff"] .ad-e-data{background:#fff;border:1px solid #e3d8ff;border-radius:6px;padding:8px;margin-top:6px}
+.ad-entry[style*="e8f8ee"] .ad-json-container{border-color:#c6f6d5}
+.ad-entry[style*="e8f8ee"] .ad-json-header{background:#f0fff4;border-bottom-color:#c6f6d5}
+.ad-entry[style*="e8f8ee"] .ad-json-content{background:#f9fffc}
 
 @media(max-width:768px){.ad-grid{grid-template-columns:1fr}}
 `;

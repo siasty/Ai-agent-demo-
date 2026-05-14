@@ -207,9 +207,9 @@ class SalesOrderAnalyzer(BaseTool):
             return 0
         return ((price - cost) / price) * 100
 
-    def _analyze_with_llm(self, pseudonymized_data: dict) -> str:
-        """Send pseudonymized data to LLM for analysis."""
-        prompt = f"""Analyze the following sales order for commercial, credit, margin, and delivery risk.
+    def _create_analysis_prompt(self, pseudonymized_data: dict) -> str:
+        """Create analysis prompt for LLM."""
+        return f"""Analyze the following sales order for commercial, credit, margin, and delivery risk.
 
 Return ONLY a JSON response with this exact structure:
 {{
@@ -229,6 +229,8 @@ Focus on:
 3. Commercial risk (order patterns, amounts)
 4. Delivery/logistics risk (timing, addresses)"""
 
+    def _analyze_with_llm_prompt(self, prompt: str) -> str:
+        """Send prompt to LLM for analysis."""
         try:
             response = requests.post(
                 "http://localhost:11434/api/generate",
@@ -252,6 +254,11 @@ Focus on:
 
         except Exception as e:
             return f"Error calling LLM: {str(e)}"
+
+    def _analyze_with_llm(self, pseudonymized_data: dict) -> str:
+        """Send pseudonymized data to LLM for analysis (legacy method)."""
+        prompt = self._create_analysis_prompt(pseudonymized_data)
+        return self._analyze_with_llm_prompt(prompt)
 
     def execute(self, sales_order_id: str) -> dict:
         """Execute sales order analysis with pseudonymization."""
@@ -342,7 +349,11 @@ Focus on:
             # Step 3: LLM Analysis
             log_step("llm_analysis", "Sending pseudonymized data to AI for risk analysis")
 
-            llm_response = self._analyze_with_llm(pseudonymized_data)
+            # Create and log the analysis prompt
+            analysis_prompt = self._create_analysis_prompt(pseudonymized_data)
+            log_step("ai_prompt", "Analysis prompt sent to AI", analysis_prompt)
+
+            llm_response = self._analyze_with_llm_prompt(analysis_prompt)
 
             # Show AI raw response
             log_step("llm_response", "AI analysis completed - raw response from model", llm_response)
