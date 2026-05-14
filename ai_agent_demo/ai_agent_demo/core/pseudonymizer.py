@@ -178,6 +178,125 @@ class BusinessPseudonymizer:
             # Fallback to manual approach when spaCy not available
             return self._pseudonymize_with_manual_patterns(sales_order)
 
+    def pseudonymize_customer_data(self, customer_data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Pseudonymize customer credit data using spaCy NER or manual patterns.
+
+        Args:
+            customer_data: Customer data structure with credit history
+
+        Returns:
+            Pseudonymized customer data
+        """
+        if self.use_ner and self.ner_detector:
+            return self._pseudonymize_customer_with_spacy(customer_data)
+        else:
+            return self._pseudonymize_customer_with_manual_patterns(customer_data)
+
+    def _pseudonymize_customer_with_spacy(self, customer_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Pseudonymize customer data using spaCy NER."""
+        self._used_spacy_ner = True
+
+        result = {}
+
+        # Customer information
+        customer = customer_data.get("customer", {})
+        result["customer"] = {
+            "name": self.pseudonymize_text_auto(customer.get("name", "")),
+            "tax_id": self.pseudonymize_text_auto(customer.get("tax_id", "")),
+            "email": self.pseudonymize_text_auto(customer.get("email", "")),
+            "phone": self.pseudonymize_text_auto(customer.get("phone", "")),
+            "address": self.pseudonymize_text_auto(customer.get("address", "")),
+            "credit_limit": customer.get("credit_limit"),  # Numeric - safe
+            "customer_group": customer.get("customer_group"),  # Business category - safe
+            "territory": customer.get("territory")  # Geographic region - safe
+        }
+
+        # Payment history (mostly numeric, safe)
+        result["payment_history"] = customer_data.get("payment_history", {})
+
+        # Recent orders
+        recent_orders = customer_data.get("recent_orders", [])
+        result["recent_orders"] = []
+        for order in recent_orders:
+            result["recent_orders"].append({
+                "sales_order_id": order.get("sales_order_id", ""),  # Keep order IDs
+                "date": order.get("date", ""),  # Dates are safe
+                "amount": order.get("amount"),  # Numeric - safe
+                "currency": order.get("currency", ""),  # Safe
+                "discount_percent": order.get("discount_percent"),  # Safe
+                "payment_terms": order.get("payment_terms", ""),  # Business term - safe
+                "sales_rep": self.pseudonymize_text_auto(order.get("sales_rep", ""))
+            })
+
+        # Outstanding invoices
+        outstanding = customer_data.get("outstanding_invoices", [])
+        result["outstanding_invoices"] = []
+        for invoice in outstanding:
+            result["outstanding_invoices"].append({
+                "invoice_id": invoice.get("invoice_id", ""),  # Keep invoice IDs
+                "issue_date": invoice.get("issue_date", ""),  # Safe
+                "due_date": invoice.get("due_date", ""),  # Safe
+                "amount": invoice.get("amount"),  # Safe
+                "outstanding": invoice.get("outstanding"),  # Safe
+                "days_overdue": invoice.get("days_overdue"),  # Safe
+                "currency": invoice.get("currency", "")  # Safe
+            })
+
+        return result
+
+    def _pseudonymize_customer_with_manual_patterns(self, customer_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Pseudonymize customer data using manual patterns."""
+        self._used_manual_patterns = True
+
+        result = {}
+
+        # Customer information
+        customer = customer_data.get("customer", {})
+        result["customer"] = {
+            "name": self._pseudonymize_company_name(customer.get("name", "")),
+            "tax_id": self._generate_token("company", customer.get("tax_id", "")),
+            "email": self._pseudonymize_email(customer.get("email", "")),
+            "phone": self._pseudonymize_phone(customer.get("phone", "")),
+            "address": self._pseudonymize_address(customer.get("address", "")),
+            "credit_limit": customer.get("credit_limit"),
+            "customer_group": customer.get("customer_group"),
+            "territory": customer.get("territory")
+        }
+
+        # Payment history (mostly numeric, safe)
+        result["payment_history"] = customer_data.get("payment_history", {})
+
+        # Recent orders
+        recent_orders = customer_data.get("recent_orders", [])
+        result["recent_orders"] = []
+        for order in recent_orders:
+            result["recent_orders"].append({
+                "sales_order_id": order.get("sales_order_id", ""),
+                "date": order.get("date", ""),
+                "amount": order.get("amount"),
+                "currency": order.get("currency", ""),
+                "discount_percent": order.get("discount_percent"),
+                "payment_terms": order.get("payment_terms", ""),
+                "sales_rep": self._pseudonymize_person_name(order.get("sales_rep", ""))
+            })
+
+        # Outstanding invoices
+        outstanding = customer_data.get("outstanding_invoices", [])
+        result["outstanding_invoices"] = []
+        for invoice in outstanding:
+            result["outstanding_invoices"].append({
+                "invoice_id": invoice.get("invoice_id", ""),
+                "issue_date": invoice.get("issue_date", ""),
+                "due_date": invoice.get("due_date", ""),
+                "amount": invoice.get("amount"),
+                "outstanding": invoice.get("outstanding"),
+                "days_overdue": invoice.get("days_overdue"),
+                "currency": invoice.get("currency", "")
+            })
+
+        return result
+
     def _pseudonymize_with_spacy_only(self, sales_order: Dict[str, Any]) -> Dict[str, Any]:
         """Pure spaCy NER pseudonymization - full AI automation."""
         self._used_spacy_ner = True

@@ -311,6 +311,16 @@ class AIAgentDemoPage {
             if (jsonMatch) {
                 return this._formatAiResponseWithJson(data, jsonMatch);
             }
+
+            // For finish type (FINAL ANSWER), apply markdown-style formatting
+            if (type === "finish") {
+                return this._formatMarkdownText(data);
+            }
+
+            // For AI prompts, apply structured formatting
+            if (type === "ai_prompt") {
+                return this._formatAiPrompt(data);
+            }
         }
 
         // Enhanced sensitive data detection with method information
@@ -581,6 +591,70 @@ class AIAgentDemoPage {
         }
 
         return html;
+    }
+
+    // -----------------------------------------------------------------------
+    // Markdown text formatting for AI responses
+    // -----------------------------------------------------------------------
+    _formatMarkdownText(text) {
+        let formatted = frappe.utils.escape_html(text);
+
+        // Format headers (## Header)
+        formatted = formatted.replace(/^## (.+)$/gm, '<h3 style="font-size: 14px; font-weight: 700; color: #495057; margin: 16px 0 8px 0; border-bottom: 2px solid #e9ecef; padding-bottom: 4px;">$1</h3>');
+
+        // Format bullet points (• Point)
+        formatted = formatted.replace(/^• (.+)$/gm, '<div style="margin: 4px 0; padding-left: 16px; position: relative;"><span style="position: absolute; left: 0; color: #6f42c1; font-weight: 600;">•</span> $1</div>');
+
+        // Format bold text (**text**)
+        formatted = formatted.replace(/\*\*([^*]+)\*\*/g, '<strong style="color: #495057;">$1</strong>');
+
+        // Format line breaks
+        formatted = formatted.replace(/\n\n/g, '</p><p style="margin: 12px 0; line-height: 1.5;">');
+        formatted = formatted.replace(/\n/g, '<br>');
+
+        // Wrap in container
+        return `<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #495057;">
+            <p style="margin: 12px 0; line-height: 1.5;">${formatted}</p>
+        </div>`;
+    }
+
+    _formatAiPrompt(promptText) {
+        let formatted = frappe.utils.escape_html(promptText);
+
+        // Format major sections (ALL CAPS followed by colon)
+        formatted = formatted.replace(/^([A-Z\s]+):\s*$/gm, '<div style="font-weight: 700; color: #6f42c1; margin: 16px 0 8px 0; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px;">$1:</div>');
+
+        // Format numbered instructions
+        formatted = formatted.replace(/^(\d+)\.\s(.+)$/gm, '<div style="margin: 6px 0; padding-left: 20px; position: relative;"><span style="position: absolute; left: 0; color: #0d6efd; font-weight: 600;">$1.</span> $2</div>');
+
+        // Format bullet points
+        formatted = formatted.replace(/^-\s(.+)$/gm, '<div style="margin: 4px 0; padding-left: 16px; position: relative;"><span style="position: absolute; left: 0; color: #198754;">•</span> $1</div>');
+
+        // Format JSON structure hints
+        formatted = formatted.replace(/(\{[^}]*\})/g, '<code style="background: #f8f9fa; padding: 2px 6px; border-radius: 3px; font-family: monospace; font-size: 11px;">$1</code>');
+
+        // Format line breaks
+        formatted = formatted.replace(/\n\n/g, '</p><p style="margin: 8px 0; line-height: 1.4;">');
+        formatted = formatted.replace(/\n/g, '<br>');
+
+        // Wrap in expandable container
+        const id = `prompt-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
+        return `
+            <div class="ad-json-container">
+                <div class="ad-json-header" onclick="this.parentElement.classList.toggle('expanded')">
+                    <span class="ad-json-toggle">▶</span>
+                    <span class="ad-json-label">📝 AI Prompt (structured instructions)</span>
+                </div>
+                <div class="ad-json-preview">
+                    <div style="padding: 8px; color: #6c757d; font-style: italic;">Click to expand full prompt...</div>
+                </div>
+                <div class="ad-json-full">
+                    <div style="padding: 12px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 12px; line-height: 1.4; color: #495057; background: #fafafa;">
+                        <p style="margin: 8px 0; line-height: 1.4;">${formatted}</p>
+                    </div>
+                </div>
+            </div>
+        `;
     }
 
 }

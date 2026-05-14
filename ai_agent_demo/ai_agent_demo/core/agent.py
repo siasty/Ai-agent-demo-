@@ -143,6 +143,45 @@ If analyzing sales orders, look for sales order IDs like "SAL-ORD-2026-00025" in
 For credit history questions, use check_customer_credit_history with customer name.
 For sales risk analysis questions, use analyze_sales_order."""
 
+    def _create_final_answer_prompt(self, user_query: str, analysis: str, context_info: str) -> str:
+        """Create prompt for final answer formatting."""
+        return f"""You are a business AI assistant providing final analysis results to a business user.
+
+TASK: Create a professional, well-formatted final answer based on the analysis results.
+
+ANALYSIS TYPE: {context_info}
+
+TECHNICAL ANALYSIS RESULTS:
+{analysis}
+
+FORMAT REQUIREMENTS:
+- Start with a clear EXECUTIVE SUMMARY section
+- Use proper section headers (## Section Name)
+- Use bullet points for lists (• Point)
+- Include specific numbers and percentages
+- End with RECOMMENDATIONS section
+- Use markdown-style formatting for clarity
+
+STRUCTURE YOUR RESPONSE EXACTLY LIKE THIS:
+
+## Executive Summary
+[Brief overview in 2-3 sentences]
+
+## Key Findings
+• Finding 1: [specific detail]
+• Finding 2: [specific detail]
+• Finding 3: [specific detail]
+
+## Risk Assessment
+• Risk Level: [High/Medium/Low]
+• Main Risk Factors: [list key factors]
+
+## Recommendations
+• Action 1: [specific recommendation]
+• Action 2: [specific recommendation]
+
+IMPORTANT: Use proper formatting with headers, bullet points, and clear sections."""
+
     def run(self, user_query: str) -> Dict[str, Any]:
         """Execute user query through agent workflow."""
         pipeline_log = []
@@ -211,31 +250,26 @@ For sales risk analysis questions, use analyze_sales_order."""
                 "step_number": 1
             })
 
-            # Step 3: Format final response
+            # Step 3: Generate final AI-formatted response
             if "error" in tool_result:
                 answer = f"Error: {tool_result['error']}"
-            elif tool_selection['tool_name'] == "analyze_sales_order":
-                # Parse and format the analysis
-                analysis = tool_result.get('analysis', 'No analysis available')
-                answer = f"Sales Order Analysis Results:\n\n{analysis}"
-            elif tool_selection['tool_name'] == "check_customer_credit_history":
-                # Format credit analysis
-                customer = tool_result.get('customer_name', 'Unknown')
-                risk_level = tool_result.get('credit_risk_level', 'unknown')
-                risk_factors = tool_result.get('risk_factors', [])
-
-                answer = f"Credit Analysis for {customer}:\n\n"
-                answer += f"Risk Level: {risk_level.upper()}\n\n"
-                answer += "Risk Factors:\n" + "\n".join(f"• {factor}" for factor in risk_factors)
-
-                if 'payment_statistics' in tool_result:
-                    stats = tool_result['payment_statistics']
-                    answer += f"\n\nPayment Statistics:\n"
-                    answer += f"• Payment ratio: {stats.get('payment_ratio_percent', 0)}%\n"
-                    answer += f"• Average delay: {stats.get('average_delay_days', 0)} days\n"
-                    answer += f"• Total outstanding: ${stats.get('total_outstanding', 0):,.2f}"
             else:
-                answer = str(tool_result)
+                # Generate final answer using AI (without exposing sensitive identifiers)
+                if tool_selection['tool_name'] == "analyze_sales_order":
+                    analysis = tool_result.get('analysis', 'No analysis available')
+                    context_info = "Sales order risk and commercial analysis"
+                elif tool_selection['tool_name'] == "check_customer_credit_history":
+                    analysis = tool_result.get('analysis', 'No analysis available')
+                    context_info = "Customer credit and payment history analysis"
+                else:
+                    analysis = str(tool_result)
+                    context_info = f"Analysis using tool: {tool_selection['tool_name']}"
+
+                # Create AI-formatted final answer
+                final_answer_prompt = self._create_final_answer_prompt(user_query, analysis, context_info)
+                log_step("ai_prompt", "Final answer formatting prompt sent to AI", final_answer_prompt)
+
+                answer = self._call_llm(final_answer_prompt)
 
             log_step("finish", "Analysis completed", answer)
 
