@@ -3,6 +3,9 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Interactive playback of a privacy-safe AI agent credit-history pipeline.">
+  <meta name="theme-color" content="#f5f7fb">
+  <meta name="robots" content="index,follow">
   <title>AI Agent Demo - Credit History Event Viewer</title>
   <style>
     :root {
@@ -90,14 +93,37 @@
       box-shadow: 0 4px 18px rgba(15, 23, 42, 0.04);
     }
 
-    .query-label {
-      display: block;
+    .query-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: center;
       margin-bottom: 6px;
+    }
+
+    .query-label {
       color: var(--muted);
       font-size: 11px;
       font-weight: 800;
       letter-spacing: 0;
       text-transform: uppercase;
+    }
+
+    .source-link {
+      color: var(--blue);
+      font-size: 12px;
+      font-weight: 700;
+      text-decoration: none;
+    }
+
+    .source-link:hover {
+      text-decoration: underline;
+    }
+
+    .source-link:focus-visible {
+      border-radius: 3px;
+      outline: 3px solid rgba(37, 99, 235, 0.28);
+      outline-offset: 2px;
     }
 
     .query-text {
@@ -181,6 +207,7 @@
       color: var(--text);
       cursor: pointer;
       font-weight: 700;
+      text-decoration: none;
     }
 
     .btn.primary {
@@ -463,6 +490,10 @@
         grid-template-columns: 1fr;
       }
 
+      .query-box {
+        min-width: 0;
+      }
+
       .summary {
         grid-template-columns: repeat(2, minmax(0, 1fr));
       }
@@ -512,7 +543,10 @@
         <p class="lead">This viewer is generated from the backend <code>pipeline_log</code>. Select any event to inspect the exact payload recorded at that step.</p>
       </div>
       <div class="query-box">
-        <span class="query-label">Example query</span>
+        <div class="query-head">
+          <span class="query-label">Example query</span>
+          <a class="source-link" href="./credit_history_tool_demo.json" download>Download source JSON</a>
+        </div>
         <div id="queryText" class="query-text"></div>
       </div>
     </header>

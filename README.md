@@ -169,6 +169,20 @@ that step.
 Source data for the same run is available as
 [`demo_recordings/credit_history_tool_demo.json`](demo_recordings/credit_history_tool_demo.json).
 
+## GitHub Pages deployment
+
+The workflow
+[`deploy-credit-history-viewer.yml`](.github/workflows/deploy-credit-history-viewer.yml)
+publishes the standalone event viewer as the root GitHub Pages site. It includes
+the source JSON and does not require Frappe, Ollama, a build step, or external
+frontend dependencies.
+
+For the first deployment, select **Settings → Pages → Build and deployment →
+Source: GitHub Actions** in the GitHub repository. Then push the viewer changes
+to `main` or run **Deploy credit history event viewer** manually from the Actions
+tab. The expected project URL is:
+[`https://siasty.github.io/Ai-agent-demo-/`](https://siasty.github.io/Ai-agent-demo-/).
+
 ## License
 
 MIT
