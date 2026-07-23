@@ -3,6 +3,7 @@ name: CI
 on:
   push:
     branches:
+      - main
       - develop
   pull_request:
 
@@ -36,7 +37,7 @@ jobs:
 
     steps:
       - name: Clone
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Find tests
         run: |
@@ -44,12 +45,12 @@ jobs:
           grep -rn "def test" > /dev/null
 
       - name: Setup Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: '3.10'
 
       - name: Setup Node
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: 18
           check-latest: true
@@ -81,18 +82,23 @@ jobs:
       - name: Setup
         run: |
           pip install frappe-bench
-          bench init --skip-redis-config-generation --skip-assets --python "$(which python)" ~/frappe-bench
+          bench init --frappe-branch version-15 --skip-redis-config-generation --skip-assets --python "$(which python)" ~/frappe-bench
           mariadb --host 127.0.0.1 --port 3306 -u root -proot -e "SET GLOBAL character_set_server = 'utf8mb4'"
           mariadb --host 127.0.0.1 --port 3306 -u root -proot -e "SET GLOBAL collation_server = 'utf8mb4_unicode_ci'"
 
       - name: Install
         working-directory: /home/runner/frappe-bench
         run: |
+          bench get-app --branch version-15 --skip-assets erpnext https://github.com/frappe/erpnext
+          bench get-app --branch develop --skip-assets workspace_embedder https://github.com/siasty/workspace_embedder.git
           bench get-app ai_agent_demo $GITHUB_WORKSPACE
           bench setup requirements --dev
+          ./env/bin/python -c "import spacy; nlp = spacy.load('en_core_web_sm'); assert 'ner' in nlp.pipe_names"
           bench new-site --db-root-password root --admin-password admin test_site
+          bench --site test_site install-app erpnext
+          bench --site test_site install-app workspace_embedder
           bench --site test_site install-app ai_agent_demo
-          bench build
+          bench build --app ai_agent_demo
         env:
           CI: 'Yes'
 

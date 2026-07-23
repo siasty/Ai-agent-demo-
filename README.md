@@ -135,29 +135,36 @@ Detailed privacy and prompt flow map:
 
 ## Requirements
 
-- Frappe v14+ (and ERPNext for Sales Order / Customer / Sales Invoice doctypes)
+- Frappe/ERPNext v15
+- [Frappe Workspace Embedder](https://github.com/siasty/workspace_embedder)
 - Ollama with a local model (`llama3.2` by default), Ollama Cloud, or an
   OpenAI-compatible HTTPS Chat Completions endpoint and API key
-- Python `spacy>=3.7` + `en_core_web_sm` model
+- Python dependencies declared in `pyproject.toml`; the spaCy
+  `en_core_web_sm` model is installed automatically with the app
 
 ## Installation
 
 ```bash
-# 1. Ollama
+# 1. Optional local inference
 curl -fsSL https://ollama.ai/install.sh | sh
 ollama pull llama3.2
 ollama serve
 
-# 2. spaCy model (or run ./install_spacy.sh)
-pip install spacy>=3.7
-python -m spacy download en_core_web_sm
-
-# 3. App
+# 2. ERPNext, Workspace Embedder, then AI Agent Demo
+cd /path/to/frappe-bench
+bench get-app --branch version-15 erpnext https://github.com/frappe/erpnext
+bench get-app --branch develop workspace_embedder https://github.com/siasty/workspace_embedder.git
 bench get-app https://github.com/siasty/Ai-agent-demo-
+bench --site your-site.local install-app erpnext
+bench --site your-site.local install-app workspace_embedder
 bench --site your-site.local install-app ai_agent_demo
 bench --site your-site.local migrate
 bench restart
 ```
+
+`bench get-app` installs `spacy` and the pinned `en_core_web_sm` wheel into the
+bench Python environment from `pyproject.toml`. `install_spacy.sh` is retained
+only as a manual repair command for an existing bench.
 
 The `create_demo_data` patch runs automatically on migrate and seeds 6 customers, 10 electronic
 parts, and 6 sales orders (TechParts Inc. scenario).

@@ -1,32 +1,17 @@
-#!/bin/bash
-# Install spaCy with Polish language model for NER-based sensitive data detection
+#!/usr/bin/env bash
+set -euo pipefail
 
-echo "🚀 Installing spaCy for AI Agent Demo..."
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+DEFAULT_PYTHON="${SCRIPT_DIR}/../../env/bin/python"
+PYTHON_BIN="${PYTHON_BIN:-${DEFAULT_PYTHON}}"
+MODEL_URL="https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl#sha256=1932429db727d4bff3deed6b34cfc05df17794f4a52eeb26cf8928f7c1a0fb85"
 
-# Install spaCy
-pip install spacy>=3.7.0
+if [[ ! -x "${PYTHON_BIN}" ]]; then
+    echo "Bench Python not found: ${PYTHON_BIN}" >&2
+    echo "Set PYTHON_BIN to the Python executable used by your bench." >&2
+    exit 1
+fi
 
-# Download English language model (primary)
-echo "📦 Downloading English language model..."
-python -m spacy download en_core_web_sm
-
-# Optional: Download medium model for better accuracy
-echo "📦 Downloading enhanced English model..."
-python -m spacy download en_core_web_md
-
-echo "✅ spaCy installation complete!"
-echo ""
-echo "🔍 Available models:"
-python -m spacy info
-
-echo ""
-echo "🧪 Testing NER detector..."
-python -c "
-try:
-    from ai_agent_demo.core.ner_detector import SpacyNERDetector
-    detector = SpacyNERDetector()
-    print('✅ NER detector initialized successfully')
-    print(f'📊 Model info: {detector.get_model_info()}')
-except Exception as e:
-    print(f'❌ Error: {e}')
-"
+"${PYTHON_BIN}" -m pip install "spacy>=3.8.0,<3.9.0" "${MODEL_URL}"
+"${PYTHON_BIN}" -c \
+    "import spacy; nlp = spacy.load('en_core_web_sm'); assert 'ner' in nlp.pipe_names; print(nlp.meta['name'], nlp.meta['version'])"
