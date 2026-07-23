@@ -1,0 +1,930 @@
+{
+  "title": "Credit history tool event viewer",
+  "query": "Check credit history for MicroDevices Partners",
+  "tool_name": "check_customer_credit_history",
+  "tool_label": "BusinessAgent.run -> CustomerCreditAnalyzer.execute",
+  "customer_name": "MicroDevices Partners",
+  "generated_at": "2026-07-23T09:09:04.467805+00:00",
+  "source": "bench --site demo execute ai_agent_demo.ai_agent_demo.api.run_agent",
+  "event_count": 21,
+  "pipeline_log": [
+    {
+      "type": "input",
+      "message": "Analyzing user query",
+      "data": "Check credit history for MicroDevices Partners"
+    },
+    {
+      "type": "query_privacy_filter",
+      "message": "User query sanitized before tool-selection prompt",
+      "data": {
+        "raw_query_sent_to_llm": false,
+        "safe_query": "Check credit history for PERSON_01",
+        "changed": true,
+        "truncated": false,
+        "sales_order_ids_replaced": 0,
+        "customer_name_replaced": true,
+        "ner_replacements": 1,
+        "ner_enabled": true
+      }
+    },
+    {
+      "type": "think",
+      "message": "AI reasoning about tool selection",
+      "data": null
+    },
+    {
+      "type": "ai_prompt",
+      "message": "Prompt sent to AI for tool selection",
+      "data": "You are a business AI assistant with access to the following tools:\n\n- analyze_sales_order: Analyze sales order for commercial, credit, margin, and delivery risks with data pseudonymization\n- check_customer_credit_history: Check customer's payment history, outstanding invoices, and credit risk indicators\n\nUser query (privacy filtered): \"Check credit history for PERSON_01\"\n\nSelect the most appropriate tool. The query may contain placeholders such as\nSALES_ORDER_ID, CUSTOMER_NAME, PERSON_01, ORGANIZATION_01, EMAIL_01, or PHONE_01.\nActual identifiers are resolved locally by application code and are not available\nto you. Use placeholders in PARAMS when needed.\n\nRespond with:\n\nTOOL: tool_name\nPARAMS: {\"param1\": \"value1\", \"param2\": \"value2\"}\nREASONING: Brief explanation of why this tool was selected\n\nIf analyzing sales orders, look for sales order references like SALES_ORDER_ID.\nFor credit history questions, use check_customer_credit_history.\nFor sales risk analysis questions, use analyze_sales_order."
+    },
+    {
+      "type": "tool_select",
+      "message": "Selected tool: check_customer_credit_history",
+      "data": "check_customer_credit_history"
+    },
+    {
+      "type": "tool_input",
+      "message": "Tool parameters",
+      "data": {
+        "customer_name": "MicroDevices Partners"
+      }
+    },
+    {
+      "type": "input",
+      "message": "Fetching credit history data for customer: MicroDevices Partners",
+      "data": null,
+      "timestamp": "2026-07-23T10:53:02.613826"
+    },
+    {
+      "type": "data_fetch",
+      "message": "Customer credit and order history retrieved from ERP",
+      "data": {
+        "currency": "PLN",
+        "customer": {
+          "name": "MicroDevices Partners",
+          "tax_id": "33-4455667",
+          "email": "amanda.wilson@microdevices.co",
+          "phone": "+1-555-0199",
+          "address": "1678 Technology Center, 98109 Seattle",
+          "credit_limit": 60000.0,
+          "customer_group": "Commercial",
+          "territory": "All Territories"
+        },
+        "payment_history": {
+          "has_payment_history": true,
+          "total_invoices_12m": 4,
+          "paid_invoices_12m": 2,
+          "payment_ratio_percent": 50.0,
+          "avg_payment_delay_days": 25.0,
+          "settled_invoice_count": 2,
+          "max_days_overdue": 36,
+          "total_outstanding": 35000.0,
+          "overdue_amount": 15000.0,
+          "total_12m_revenue": 51500.0,
+          "credit_utilization_percent": 58.3
+        },
+        "recent_orders": [
+          {
+            "sales_order_id": "SAL-ORD-2026-00006",
+            "date": "2026-07-10",
+            "amount": 13100.0,
+            "currency": "PLN",
+            "discount_percent": 0.0,
+            "payment_terms": "N/A",
+            "sales_rep": "Administrator"
+          }
+        ],
+        "outstanding_invoices": [
+          {
+            "invoice_id": "ACC-SINV-2026-00022",
+            "issue_date": "2026-05-18",
+            "due_date": "2026-06-17",
+            "amount": 15000.0,
+            "outstanding": 15000.0,
+            "days_overdue": 36,
+            "currency": "PLN"
+          },
+          {
+            "invoice_id": "ACC-SINV-2026-00023",
+            "issue_date": "2026-07-04",
+            "due_date": "2026-08-18",
+            "amount": 20000.0,
+            "outstanding": 20000.0,
+            "days_overdue": 0,
+            "currency": "PLN"
+          }
+        ]
+      },
+      "timestamp": "2026-07-23T10:53:02.673737"
+    },
+    {
+      "type": "sensitive_data_detected",
+      "message": "SENSITIVE DATA DETECTED using Automated AI/NLP Detection",
+      "data": {
+        "sensitive_fields": {
+          "customer_name": "MicroDevices Partners",
+          "customer_email": "amanda.wilson@microdevices.co",
+          "customer_phone": "+1-555-0199",
+          "customer_address": "1678 Technology Center, 98109 Seattle",
+          "sales_rep_0": "Administrator"
+        },
+        "detection_method": "Automated AI/NLP Detection",
+        "nlp_framework": "spaCy en_core_web_sm",
+        "entity_types_supported": [
+          "CARDINAL",
+          "DATE",
+          "EVENT",
+          "FAC",
+          "GPE",
+          "LANGUAGE",
+          "LAW",
+          "LOC",
+          "MONEY",
+          "NORP"
+        ],
+        "custom_patterns": [
+          "EMAIL",
+          "PHONE",
+          "ORG",
+          "FACILITY",
+          "ZIPCODE",
+          "IBAN",
+          "SSN",
+          "CREDIT_CARD",
+          "TAX_ID"
+        ]
+      },
+      "timestamp": "2026-07-23T10:53:02.882506"
+    },
+    {
+      "type": "pseudonymize_start",
+      "message": "Starting data pseudonymization for customer credit analysis",
+      "data": null,
+      "timestamp": "2026-07-23T10:53:02.882517"
+    },
+    {
+      "type": "debug_detection",
+      "message": "\ud83d\udd0d DEBUG: What spaCy/patterns detected and mapped",
+      "data": {
+        "total_mappings": 7,
+        "all_mappings": [
+          "'MicroDevices Partners' \u2192 ORGANIZATION_01",
+          "'33-4455667' \u2192 COMPANY_01",
+          "'amanda.wilson@microdevices.co' \u2192 EMAIL_01",
+          "'1-555-0199' \u2192 PHONE_01",
+          "'Seattle' \u2192 LOCATION_01",
+          "'98109' \u2192 LOCATION_02",
+          "'Technology Center' \u2192 LOCATION_03"
+        ],
+        "spacy_used": true,
+        "manual_used": true
+      },
+      "timestamp": "2026-07-23T10:53:02.897110"
+    },
+    {
+      "type": "pseudonymize_complete",
+      "message": "Customer data pseudonymized using Automated AI/NLP Detection, Manual field mapping (fallback)",
+      "data": {
+        "summary": {
+          "total_replacements": 7,
+          "categories": {
+            "email": 1,
+            "phone": 1,
+            "company": 1,
+            "organization": 1,
+            "location": 3
+          },
+          "sample_mappings": {
+            "ORGANIZATION_01": "MicroDevices Partners",
+            "COMPANY_01": "33-4455667",
+            "EMAIL_01": "amanda.wilson@microdevices.co",
+            "PHONE_01": "1-555-0199",
+            "LOCATION_01": "Seattle"
+          },
+          "detection_methods": [
+            "Automated AI/NLP Detection",
+            "Manual field mapping (fallback)"
+          ],
+          "ner_enabled": true,
+          "ner_model": "en_core_web_sm",
+          "tools_used": {
+            "primary_method": "Automated AI/NLP Detection",
+            "nlp_framework": "spaCy en_core_web_sm",
+            "language_model": "en language model",
+            "entity_types": [
+              "CARDINAL",
+              "DATE",
+              "EVENT",
+              "FAC",
+              "GPE",
+              "LANGUAGE",
+              "LAW",
+              "LOC",
+              "MONEY",
+              "NORP",
+              "ORDINAL",
+              "ORG",
+              "PERCENT",
+              "PERSON",
+              "PRODUCT",
+              "QUANTITY",
+              "TIME",
+              "WORK_OF_ART"
+            ],
+            "custom_patterns": [
+              "EMAIL",
+              "PHONE",
+              "ORG",
+              "FACILITY",
+              "ZIPCODE",
+              "IBAN",
+              "SSN",
+              "CREDIT_CARD",
+              "TAX_ID"
+            ],
+            "automation_level": "Full automation - AI detects all sensitive data",
+            "approach": "Pure NLP - no manual field mapping"
+          }
+        },
+        "examples": [
+          "MicroDevices Partners \u2192 ORGANIZATION_01",
+          "33-4455667 \u2192 COMPANY_01",
+          "amanda.wilson@microdevices.co \u2192 EMAIL_01",
+          "1-555-0199 \u2192 PHONE_01",
+          "Seattle \u2192 LOCATION_01",
+          "98109 \u2192 LOCATION_02",
+          "Technology Center \u2192 LOCATION_03"
+        ],
+        "methods_used": [
+          "Automated AI/NLP Detection",
+          "Manual field mapping (fallback)"
+        ]
+      },
+      "timestamp": "2026-07-23T10:53:02.897182"
+    },
+    {
+      "type": "ai_prompt",
+      "message": "Credit analysis prompt sent to AI",
+      "data": "Analyze the following customer's credit and payment history for financial risk assessment.\n\nGROUNDING RULES - these override everything else:\n- Use ONLY the values present in the customer data below. Do not invent numbers,\n  credit scores, ratings, or trends that are not in the data.\n- All monetary amounts are in PLN. Never convert or relabel them.\n- If \"has_payment_history\" is false, the customer has NO invoice history. In that\n  case you MUST return \"credit_risk_level\": \"unknown\", state that payment behaviour\n  cannot be assessed, and recommend obtaining a payment history before extending\n  credit. Do NOT describe such a customer as reliable, debt free or low risk.\n- A null value means \"not measurable\", not zero and not a good result.\n- Never claim a positive trend from a single data point.\n\nRISK CLASSIFICATION - already decided, do not recompute:\nThe rule engine classified this customer as \"medium\". Copy this value into\n\"credit_risk_level\" verbatim. Your task is to explain and support that verdict with\nthe figures below, never to argue for a different level.\n\nReturn ONLY a JSON response with this exact structure:\n{\n    \"credit_risk_level\": \"medium\",\n    \"main_risk_factors\": [\"risk factor 1\", \"risk factor 2\", ...],\n    \"recommended_actions\": [\"action 1\", \"action 2\", ...],\n    \"credit_limit_recommendation\": \"increase|maintain|decrease|suspend|insufficient_data\",\n    \"analysis_summary\": \"brief summary of key findings, citing concrete numbers\"\n}\n\nCustomer data:\n{\n  \"currency\": \"PLN\",\n  \"customer\": {\n    \"name\": \"ORGANIZATION_01\",\n    \"tax_id\": \"COMPANY_01\",\n    \"email\": \"EMAIL_01\",\n    \"phone\": \"+PHONE_01\",\n    \"address\": \"1678 LOCATION_03, LOCATION_02 LOCATION_01\",\n    \"credit_limit\": 60000.0,\n    \"customer_group\": \"Commercial\",\n    \"territory\": \"All Territories\"\n  },\n  \"payment_history\": {\n    \"has_payment_history\": true,\n    \"total_invoices_12m\": 4,\n    \"paid_invoices_12m\": 2,\n    \"payment_ratio_percent\": 50.0,\n    \"avg_payment_delay_days\": 25.0,\n    \"settled_invoice_count\": 2,\n    \"max_days_overdue\": 36,\n    \"total_outstanding\": 35000.0,\n    \"overdue_amount\": 15000.0,\n    \"total_12m_revenue\": 51500.0,\n    \"credit_utilization_percent\": 58.3\n  },\n  \"recent_orders\": [\n    {\n      \"sales_order_id\": \"SAL-ORD-2026-00006\",\n      \"date\": \"2026-07-10\",\n      \"amount\": 13100.0,\n      \"currency\": \"PLN\",\n      \"discount_percent\": 0.0,\n      \"payment_terms\": \"N/A\",\n      \"sales_rep\": \"Administrator\"\n    }\n  ],\n  \"outstanding_invoices\": [\n    {\n      \"invoice_id\": \"ACC-SINV-2026-00022\",\n      \"issue_date\": \"2026-05-18\",\n      \"due_date\": \"2026-06-17\",\n      \"amount\": 15000.0,\n      \"outstanding\": 15000.0,\n      \"days_overdue\": 36,\n      \"currency\": \"PLN\"\n    },\n    {\n      \"invoice_id\": \"ACC-SINV-2026-00023\",\n      \"issue_date\": \"2026-07-04\",\n      \"due_date\": \"2026-08-18\",\n      \"amount\": 20000.0,\n      \"outstanding\": 20000.0,\n      \"days_overdue\": 0,\n      \"currency\": \"PLN\"\n    }\n  ]\n}\n\nAssess, citing the concrete figures behind each point:\n1. Payment behavior - avg_payment_delay_days, payment_ratio_percent\n2. Overdue exposure - overdue_amount, max_days_overdue\n3. Credit utilization - credit_utilization_percent against credit_limit\n4. Outstanding debt vs revenue - total_outstanding vs total_12m_revenue\n5. Recent order patterns and overall financial stability",
+      "timestamp": "2026-07-23T10:53:02.897252"
+    },
+    {
+      "type": "llm_response",
+      "message": "AI credit analysis completed - raw response from model",
+      "data": "Here is the JSON response based on the provided customer data:\n\n{\n    \"credit_risk_level\": \"medium\",\n    \"main_risk_factors\": [\n        \"Average payment delay of 25 days, which may indicate a need for more efficient payment processing or communication with customers.\",\n        \"Payment ratio of 50% indicates that the customer is paying less than half of their outstanding invoices on time, suggesting potential cash flow issues.\"\n    ],\n    \"recommended_actions\": [\n        \"Improve payment processing efficiency to reduce average payment delay and increase payment ratio.\",\n        \"Monitor and address any potential cash flow issues promptly to avoid further delays in payments.\"\n    ],\n    \"credit_limit_recommendation\": \"increase\",\n    \"analysis_summary\": \"The customer has a medium credit risk level due to concerns about their payment behavior, overdue exposure, and credit utilization. The average payment delay of 25 days and payment ratio of 50% suggest potential cash flow issues. Additionally, the high total outstanding amount of PLN 35,000 and low revenue of PLN 51,500 indicate a significant debt burden. Increasing the credit limit may help alleviate some of these concerns, but it is essential to monitor the customer's financial performance closely.\"\n}\n\nThe customer was classified as \"medium\" risk due to several factors:\n\n1. Payment behavior: The average payment delay of 25 days and payment ratio of 50% indicate potential cash flow issues and a need for more efficient payment processing or communication with customers.\n2. Overdue exposure: The high total outstanding amount of PLN 35,000 and overdue amount of PLN 15,000 suggest that the customer is struggling to meet their payment obligations, which increases the risk of non-payment.\n3. Credit utilization: The credit utilization percent of 58.3% against a credit limit of PLN 60,000 indicates that the customer is using a significant portion of their available credit, which may lead to increased debt and reduced creditworthiness.\n4. Outstanding debt vs revenue: The high total outstanding amount of PLN 35,000 compared to the low revenue of PLN 51,500 suggests a significant debt burden, which increases the risk of non-payment.\n5. Recent order patterns and overall financial stability: While there is only one recent order, its size of PLN 13,100 may indicate that the customer has sufficient funds to meet their payment obligations. However, this single data point does not provide enough information to assess the customer's overall financial stability.\n\nOverall, the combination of these factors suggests a medium credit risk level, and increasing the credit limit may help alleviate some of these concerns. However, it is essential to monitor the customer's financial performance closely to ensure that they can meet their payment obligations.",
+      "timestamp": "2026-07-23T10:53:11.842235"
+    },
+    {
+      "type": "token_check",
+      "message": "Checking AI response for pseudonym tokens",
+      "data": {
+        "tokens_found": [],
+        "needs_depseudonymization": false
+      },
+      "timestamp": "2026-07-23T10:53:11.842254"
+    },
+    {
+      "type": "depseudonymize",
+      "message": "Restoring original customer identifiers in credit analysis",
+      "data": null,
+      "timestamp": "2026-07-23T10:53:11.842256"
+    },
+    {
+      "type": "final_response",
+      "message": "Final credit analysis with original identifiers restored",
+      "data": "Here is the JSON response based on the provided customer data:\n\n{\n    \"credit_risk_level\": \"medium\",\n    \"main_risk_factors\": [\n        \"Average payment delay of 25 days, which may indicate a need for more efficient payment processing or communication with customers.\",\n        \"Payment ratio of 50% indicates that the customer is paying less than half of their outstanding invoices on time, suggesting potential cash flow issues.\"\n    ],\n    \"recommended_actions\": [\n        \"Improve payment processing efficiency to reduce average payment delay and increase payment ratio.\",\n        \"Monitor and address any potential cash flow issues promptly to avoid further delays in payments.\"\n    ],\n    \"credit_limit_recommendation\": \"increase\",\n    \"analysis_summary\": \"The customer has a medium credit risk level due to concerns about their payment behavior, overdue exposure, and credit utilization. The average payment delay of 25 days and payment ratio of 50% suggest potential cash flow issues. Additionally, the high total outstanding amount of PLN 35,000 and low revenue of PLN 51,500 indicate a significant debt burden. Increasing the credit limit may help alleviate some of these concerns, but it is essential to monitor the customer's financial performance closely.\"\n}\n\nThe customer was classified as \"medium\" risk due to several factors:\n\n1. Payment behavior: The average payment delay of 25 days and payment ratio of 50% indicate potential cash flow issues and a need for more efficient payment processing or communication with customers.\n2. Overdue exposure: The high total outstanding amount of PLN 35,000 and overdue amount of PLN 15,000 suggest that the customer is struggling to meet their payment obligations, which increases the risk of non-payment.\n3. Credit utilization: The credit utilization percent of 58.3% against a credit limit of PLN 60,000 indicates that the customer is using a significant portion of their available credit, which may lead to increased debt and reduced creditworthiness.\n4. Outstanding debt vs revenue: The high total outstanding amount of PLN 35,000 compared to the low revenue of PLN 51,500 suggests a significant debt burden, which increases the risk of non-payment.\n5. Recent order patterns and overall financial stability: While there is only one recent order, its size of PLN 13,100 may indicate that the customer has sufficient funds to meet their payment obligations. However, this single data point does not provide enough information to assess the customer's overall financial stability.\n\nOverall, the combination of these factors suggests a medium credit risk level, and increasing the credit limit may help alleviate some of these concerns. However, it is essential to monitor the customer's financial performance closely to ensure that they can meet their payment obligations.",
+      "timestamp": "2026-07-23T10:53:11.842263"
+    },
+    {
+      "type": "complete",
+      "message": "Customer credit analysis completed with data protection maintained",
+      "data": null,
+      "timestamp": "2026-07-23T10:53:11.842265"
+    },
+    {
+      "type": "tool_output",
+      "message": "Tool execution completed",
+      "data": {
+        "success": true,
+        "has_analysis": true
+      }
+    },
+    {
+      "type": "ai_prompt",
+      "message": "Final answer formatting prompt sent to AI",
+      "data": "You are a business AI assistant presenting a customer credit review.\n\nTECHNICAL ANALYSIS RESULTS:\nHere is the JSON response based on the provided customer data:\n\n{\n    \"credit_risk_level\": \"medium\",\n    \"main_risk_factors\": [\n        \"Average payment delay of 25 days, which may indicate a need for more efficient payment processing or communication with customers.\",\n        \"Payment ratio of 50% indicates that the customer is paying less than half of their outstanding invoices on time, suggesting potential cash flow issues.\"\n    ],\n    \"recommended_actions\": [\n        \"Improve payment processing efficiency to reduce average payment delay and increase payment ratio.\",\n        \"Monitor and address any potential cash flow issues promptly to avoid further delays in payments.\"\n    ],\n    \"credit_limit_recommendation\": \"increase\",\n    \"analysis_summary\": \"The customer has a medium credit risk level due to concerns about their payment behavior, overdue exposure, and credit utilization. The average payment delay of 25 days and payment ratio of 50% suggest potential cash flow issues. Additionally, the high total outstanding amount of PLN 35,000 and low revenue of PLN 51,500 indicate a significant debt burden. Increasing the credit limit may help alleviate some of these concerns, but it is essential to monitor the customer's financial performance closely.\"\n}\n\nThe customer was classified as \"medium\" risk due to several factors:\n\n1. Payment behavior: The average payment delay of 25 days and payment ratio of 50% indicate potential cash flow issues and a need for more efficient payment processing or communication with customers.\n2. Overdue exposure: The high total outstanding amount of PLN 35,000 and overdue amount of PLN 15,000 suggest that the customer is struggling to meet their payment obligations, which increases the risk of non-payment.\n3. Credit utilization: The credit utilization percent of 58.3% against a credit limit of PLN 60,000 indicates that the customer is using a significant portion of their available credit, which may lead to increased debt and reduced creditworthiness.\n4. Outstanding debt vs revenue: The high total outstanding amount of PLN 35,000 compared to the low revenue of PLN 51,500 suggests a significant debt burden, which increases the risk of non-payment.\n5. Recent order patterns and overall financial stability: While there is only one recent order, its size of PLN 13,100 may indicate that the customer has sufficient funds to meet their payment obligations. However, this single data point does not provide enough information to assess the customer's overall financial stability.\n\nOverall, the combination of these factors suggests a medium credit risk level, and increasing the credit limit may help alleviate some of these concerns. However, it is essential to monitor the customer's financial performance closely to ensure that they can meet their payment obligations.\n\nVERIFIED FIGURES (authoritative - quote these, never contradict them):\n{\n  \"currency\": \"PLN\",\n  \"credit_limit\": 60000.0,\n  \"rule_based_risk_level\": \"medium\",\n  \"payment_history\": {\n    \"has_payment_history\": true,\n    \"total_invoices_12m\": 4,\n    \"paid_invoices_12m\": 2,\n    \"payment_ratio_percent\": 50.0,\n    \"avg_payment_delay_days\": 25.0,\n    \"settled_invoice_count\": 2,\n    \"max_days_overdue\": 36,\n    \"total_outstanding\": 35000.0,\n    \"overdue_amount\": 15000.0,\n    \"total_12m_revenue\": 51500.0,\n    \"credit_utilization_percent\": 58.3\n  },\n  \"outstanding_invoice_count\": 2,\n  \"recent_order_count\": 1\n}\n\nGROUNDING RULES - these override the formatting requirements:\n- Reformat ONLY what the analysis results contain. Never add findings, numbers,\n  ratings or reassurances that are not present above.\n- Every bullet must cite a concrete figure from the analysis results.\n- If the analysis reports unknown risk or missing data, say so plainly and do not\n  fill the section with generic positive statements.\n- If a section has no supporting data, write \"Not assessable - no data available\"\n  instead of inventing content.\n- The risk level must match \"rule_based_risk_level\" from the verified figures\n  exactly. It was decided by a rule engine and is not open to reinterpretation.\n- Never state that a customer pays on time, has no debt or has a good credit score\n  unless the analysis results explicitly support it with figures.\n\nSTRUCTURE YOUR RESPONSE EXACTLY LIKE THIS:\n\n## Executive Summary\n[2-3 sentences: the customer's payment standing and the headline credit risk]\n\n## Payment Behaviour\n\u2022 Invoices settled: [paid vs total, with percentage]\n\u2022 Average payment delay: [days, or \"not measurable\"]\n\u2022 Overdue exposure: [overdue amount and maximum days overdue]\n\n## Credit Exposure\n\u2022 Outstanding balance vs credit limit: [amounts and utilization percentage]\n\u2022 Outstanding vs 12-month revenue: [both figures]\n\n## Risk Assessment\n\u2022 Risk Level: [High/Medium/Low/Unknown]\n\u2022 Main Risk Factors: [one bullet per factor, each with its supporting figure]\n\n## Recommendations\n\u2022 Credit limit: [increase/maintain/decrease/suspend, or \"insufficient data\"]\n\u2022 Action 1: [specific recommendation]\n\u2022 Action 2: [specific recommendation]\n\nUse markdown headers and bullet points exactly as shown."
+    },
+    {
+      "type": "finish",
+      "message": "Analysis completed",
+      "data": "## Executive Summary\nThe customer has a medium credit risk level due to concerns about their payment behavior, overdue exposure, and credit utilization.\n\n## Payment Behaviour\n\u2022 Invoices settled: Paid invoices: 2 / Total invoices: 4, Payment ratio percent: 50.0%\n\u2022 Average payment delay: 25 days\n\u2022 Overdue exposure: Overdue amount: PLN 15,000, Maximum days overdue: 36\n\n## Credit Exposure\n\u2022 Outstanding balance vs credit limit: Outstanding balance: PLN 35,000, Credit utilization percent: 58.3%\n\u2022 Outstanding vs 12-month revenue: Total outstanding: PLN 35,000, Total 12-month revenue: PLN 51,500\n\n## Risk Assessment\n\u2022 Risk Level: Medium\n\u2022 Main Risk Factors:\n  \u2022 Average payment delay of 25 days may indicate a need for more efficient payment processing or communication with customers.\n  \u2022 Payment ratio of 50% suggests potential cash flow issues.\n\n## Recommendations\n\u2022 Credit limit: Increase\n\u2022 Action 1: Improve payment processing efficiency to reduce average payment delay and increase payment ratio.\n\u2022 Action 2: Monitor and address any potential cash flow issues promptly to avoid further delays in payments."
+    }
+  ],
+  "result": {
+    "answer": "## Executive Summary\nThe customer has a medium credit risk level due to concerns about their payment behavior, overdue exposure, and credit utilization.\n\n## Payment Behaviour\n\u2022 Invoices settled: Paid invoices: 2 / Total invoices: 4, Payment ratio percent: 50.0%\n\u2022 Average payment delay: 25 days\n\u2022 Overdue exposure: Overdue amount: PLN 15,000, Maximum days overdue: 36\n\n## Credit Exposure\n\u2022 Outstanding balance vs credit limit: Outstanding balance: PLN 35,000, Credit utilization percent: 58.3%\n\u2022 Outstanding vs 12-month revenue: Total outstanding: PLN 35,000, Total 12-month revenue: PLN 51,500\n\n## Risk Assessment\n\u2022 Risk Level: Medium\n\u2022 Main Risk Factors:\n  \u2022 Average payment delay of 25 days may indicate a need for more efficient payment processing or communication with customers.\n  \u2022 Payment ratio of 50% suggests potential cash flow issues.\n\n## Recommendations\n\u2022 Credit limit: Increase\n\u2022 Action 1: Improve payment processing efficiency to reduce average payment delay and increase payment ratio.\n\u2022 Action 2: Monitor and address any potential cash flow issues promptly to avoid further delays in payments.",
+    "steps": [
+      {
+        "tool_name": "check_customer_credit_history",
+        "tool_input": {
+          "customer_name": "MicroDevices Partners"
+        },
+        "tool_output": {
+          "customer_name": "MicroDevices Partners",
+          "analysis": "Here is the JSON response based on the provided customer data:\n\n{\n    \"credit_risk_level\": \"medium\",\n    \"main_risk_factors\": [\n        \"Average payment delay of 25 days, which may indicate a need for more efficient payment processing or communication with customers.\",\n        \"Payment ratio of 50% indicates that the customer is paying less than half of their outstanding invoices on time, suggesting potential cash flow issues.\"\n    ],\n    \"recommended_actions\": [\n        \"Improve payment processing efficiency to reduce average payment delay and increase payment ratio.\",\n        \"Monitor and address any potential cash flow issues promptly to avoid further delays in payments.\"\n    ],\n    \"credit_limit_recommendation\": \"increase\",\n    \"analysis_summary\": \"The customer has a medium credit risk level due to concerns about their payment behavior, overdue exposure, and credit utilization. The average payment delay of 25 days and payment ratio of 50% suggest potential cash flow issues. Additionally, the high total outstanding amount of PLN 35,000 and low revenue of PLN 51,500 indicate a significant debt burden. Increasing the credit limit may help alleviate some of these concerns, but it is essential to monitor the customer's financial performance closely.\"\n}\n\nThe customer was classified as \"medium\" risk due to several factors:\n\n1. Payment behavior: The average payment delay of 25 days and payment ratio of 50% indicate potential cash flow issues and a need for more efficient payment processing or communication with customers.\n2. Overdue exposure: The high total outstanding amount of PLN 35,000 and overdue amount of PLN 15,000 suggest that the customer is struggling to meet their payment obligations, which increases the risk of non-payment.\n3. Credit utilization: The credit utilization percent of 58.3% against a credit limit of PLN 60,000 indicates that the customer is using a significant portion of their available credit, which may lead to increased debt and reduced creditworthiness.\n4. Outstanding debt vs revenue: The high total outstanding amount of PLN 35,000 compared to the low revenue of PLN 51,500 suggests a significant debt burden, which increases the risk of non-payment.\n5. Recent order patterns and overall financial stability: While there is only one recent order, its size of PLN 13,100 may indicate that the customer has sufficient funds to meet their payment obligations. However, this single data point does not provide enough information to assess the customer's overall financial stability.\n\nOverall, the combination of these factors suggests a medium credit risk level, and increasing the credit limit may help alleviate some of these concerns. However, it is essential to monitor the customer's financial performance closely to ensure that they can meet their payment obligations.",
+          "metrics": {
+            "currency": "PLN",
+            "credit_limit": 60000.0,
+            "rule_based_risk_level": "medium",
+            "payment_history": {
+              "has_payment_history": true,
+              "total_invoices_12m": 4,
+              "paid_invoices_12m": 2,
+              "payment_ratio_percent": 50.0,
+              "avg_payment_delay_days": 25.0,
+              "settled_invoice_count": 2,
+              "max_days_overdue": 36,
+              "total_outstanding": 35000.0,
+              "overdue_amount": 15000.0,
+              "total_12m_revenue": 51500.0,
+              "credit_utilization_percent": 58.3
+            },
+            "outstanding_invoice_count": 2,
+            "recent_order_count": 1
+          },
+          "pipeline_log": [
+            {
+              "type": "input",
+              "message": "Fetching credit history data for customer: MicroDevices Partners",
+              "data": null,
+              "timestamp": "2026-07-23T10:53:02.613826"
+            },
+            {
+              "type": "data_fetch",
+              "message": "Customer credit and order history retrieved from ERP",
+              "data": {
+                "currency": "PLN",
+                "customer": {
+                  "name": "MicroDevices Partners",
+                  "tax_id": "33-4455667",
+                  "email": "amanda.wilson@microdevices.co",
+                  "phone": "+1-555-0199",
+                  "address": "1678 Technology Center, 98109 Seattle",
+                  "credit_limit": 60000.0,
+                  "customer_group": "Commercial",
+                  "territory": "All Territories"
+                },
+                "payment_history": {
+                  "has_payment_history": true,
+                  "total_invoices_12m": 4,
+                  "paid_invoices_12m": 2,
+                  "payment_ratio_percent": 50.0,
+                  "avg_payment_delay_days": 25.0,
+                  "settled_invoice_count": 2,
+                  "max_days_overdue": 36,
+                  "total_outstanding": 35000.0,
+                  "overdue_amount": 15000.0,
+                  "total_12m_revenue": 51500.0,
+                  "credit_utilization_percent": 58.3
+                },
+                "recent_orders": [
+                  {
+                    "sales_order_id": "SAL-ORD-2026-00006",
+                    "date": "2026-07-10",
+                    "amount": 13100.0,
+                    "currency": "PLN",
+                    "discount_percent": 0.0,
+                    "payment_terms": "N/A",
+                    "sales_rep": "Administrator"
+                  }
+                ],
+                "outstanding_invoices": [
+                  {
+                    "invoice_id": "ACC-SINV-2026-00022",
+                    "issue_date": "2026-05-18",
+                    "due_date": "2026-06-17",
+                    "amount": 15000.0,
+                    "outstanding": 15000.0,
+                    "days_overdue": 36,
+                    "currency": "PLN"
+                  },
+                  {
+                    "invoice_id": "ACC-SINV-2026-00023",
+                    "issue_date": "2026-07-04",
+                    "due_date": "2026-08-18",
+                    "amount": 20000.0,
+                    "outstanding": 20000.0,
+                    "days_overdue": 0,
+                    "currency": "PLN"
+                  }
+                ]
+              },
+              "timestamp": "2026-07-23T10:53:02.673737"
+            },
+            {
+              "type": "sensitive_data_detected",
+              "message": "SENSITIVE DATA DETECTED using Automated AI/NLP Detection",
+              "data": {
+                "sensitive_fields": {
+                  "customer_name": "MicroDevices Partners",
+                  "customer_email": "amanda.wilson@microdevices.co",
+                  "customer_phone": "+1-555-0199",
+                  "customer_address": "1678 Technology Center, 98109 Seattle",
+                  "sales_rep_0": "Administrator"
+                },
+                "detection_method": "Automated AI/NLP Detection",
+                "nlp_framework": "spaCy en_core_web_sm",
+                "entity_types_supported": [
+                  "CARDINAL",
+                  "DATE",
+                  "EVENT",
+                  "FAC",
+                  "GPE",
+                  "LANGUAGE",
+                  "LAW",
+                  "LOC",
+                  "MONEY",
+                  "NORP"
+                ],
+                "custom_patterns": [
+                  "EMAIL",
+                  "PHONE",
+                  "ORG",
+                  "FACILITY",
+                  "ZIPCODE",
+                  "IBAN",
+                  "SSN",
+                  "CREDIT_CARD",
+                  "TAX_ID"
+                ]
+              },
+              "timestamp": "2026-07-23T10:53:02.882506"
+            },
+            {
+              "type": "pseudonymize_start",
+              "message": "Starting data pseudonymization for customer credit analysis",
+              "data": null,
+              "timestamp": "2026-07-23T10:53:02.882517"
+            },
+            {
+              "type": "debug_detection",
+              "message": "\ud83d\udd0d DEBUG: What spaCy/patterns detected and mapped",
+              "data": {
+                "total_mappings": 7,
+                "all_mappings": [
+                  "'MicroDevices Partners' \u2192 ORGANIZATION_01",
+                  "'33-4455667' \u2192 COMPANY_01",
+                  "'amanda.wilson@microdevices.co' \u2192 EMAIL_01",
+                  "'1-555-0199' \u2192 PHONE_01",
+                  "'Seattle' \u2192 LOCATION_01",
+                  "'98109' \u2192 LOCATION_02",
+                  "'Technology Center' \u2192 LOCATION_03"
+                ],
+                "spacy_used": true,
+                "manual_used": true
+              },
+              "timestamp": "2026-07-23T10:53:02.897110"
+            },
+            {
+              "type": "pseudonymize_complete",
+              "message": "Customer data pseudonymized using Automated AI/NLP Detection, Manual field mapping (fallback)",
+              "data": {
+                "summary": {
+                  "total_replacements": 7,
+                  "categories": {
+                    "email": 1,
+                    "phone": 1,
+                    "company": 1,
+                    "organization": 1,
+                    "location": 3
+                  },
+                  "sample_mappings": {
+                    "ORGANIZATION_01": "MicroDevices Partners",
+                    "COMPANY_01": "33-4455667",
+                    "EMAIL_01": "amanda.wilson@microdevices.co",
+                    "PHONE_01": "1-555-0199",
+                    "LOCATION_01": "Seattle"
+                  },
+                  "detection_methods": [
+                    "Automated AI/NLP Detection",
+                    "Manual field mapping (fallback)"
+                  ],
+                  "ner_enabled": true,
+                  "ner_model": "en_core_web_sm",
+                  "tools_used": {
+                    "primary_method": "Automated AI/NLP Detection",
+                    "nlp_framework": "spaCy en_core_web_sm",
+                    "language_model": "en language model",
+                    "entity_types": [
+                      "CARDINAL",
+                      "DATE",
+                      "EVENT",
+                      "FAC",
+                      "GPE",
+                      "LANGUAGE",
+                      "LAW",
+                      "LOC",
+                      "MONEY",
+                      "NORP",
+                      "ORDINAL",
+                      "ORG",
+                      "PERCENT",
+                      "PERSON",
+                      "PRODUCT",
+                      "QUANTITY",
+                      "TIME",
+                      "WORK_OF_ART"
+                    ],
+                    "custom_patterns": [
+                      "EMAIL",
+                      "PHONE",
+                      "ORG",
+                      "FACILITY",
+                      "ZIPCODE",
+                      "IBAN",
+                      "SSN",
+                      "CREDIT_CARD",
+                      "TAX_ID"
+                    ],
+                    "automation_level": "Full automation - AI detects all sensitive data",
+                    "approach": "Pure NLP - no manual field mapping"
+                  }
+                },
+                "examples": [
+                  "MicroDevices Partners \u2192 ORGANIZATION_01",
+                  "33-4455667 \u2192 COMPANY_01",
+                  "amanda.wilson@microdevices.co \u2192 EMAIL_01",
+                  "1-555-0199 \u2192 PHONE_01",
+                  "Seattle \u2192 LOCATION_01",
+                  "98109 \u2192 LOCATION_02",
+                  "Technology Center \u2192 LOCATION_03"
+                ],
+                "methods_used": [
+                  "Automated AI/NLP Detection",
+                  "Manual field mapping (fallback)"
+                ]
+              },
+              "timestamp": "2026-07-23T10:53:02.897182"
+            },
+            {
+              "type": "ai_prompt",
+              "message": "Credit analysis prompt sent to AI",
+              "data": "Analyze the following customer's credit and payment history for financial risk assessment.\n\nGROUNDING RULES - these override everything else:\n- Use ONLY the values present in the customer data below. Do not invent numbers,\n  credit scores, ratings, or trends that are not in the data.\n- All monetary amounts are in PLN. Never convert or relabel them.\n- If \"has_payment_history\" is false, the customer has NO invoice history. In that\n  case you MUST return \"credit_risk_level\": \"unknown\", state that payment behaviour\n  cannot be assessed, and recommend obtaining a payment history before extending\n  credit. Do NOT describe such a customer as reliable, debt free or low risk.\n- A null value means \"not measurable\", not zero and not a good result.\n- Never claim a positive trend from a single data point.\n\nRISK CLASSIFICATION - already decided, do not recompute:\nThe rule engine classified this customer as \"medium\". Copy this value into\n\"credit_risk_level\" verbatim. Your task is to explain and support that verdict with\nthe figures below, never to argue for a different level.\n\nReturn ONLY a JSON response with this exact structure:\n{\n    \"credit_risk_level\": \"medium\",\n    \"main_risk_factors\": [\"risk factor 1\", \"risk factor 2\", ...],\n    \"recommended_actions\": [\"action 1\", \"action 2\", ...],\n    \"credit_limit_recommendation\": \"increase|maintain|decrease|suspend|insufficient_data\",\n    \"analysis_summary\": \"brief summary of key findings, citing concrete numbers\"\n}\n\nCustomer data:\n{\n  \"currency\": \"PLN\",\n  \"customer\": {\n    \"name\": \"ORGANIZATION_01\",\n    \"tax_id\": \"COMPANY_01\",\n    \"email\": \"EMAIL_01\",\n    \"phone\": \"+PHONE_01\",\n    \"address\": \"1678 LOCATION_03, LOCATION_02 LOCATION_01\",\n    \"credit_limit\": 60000.0,\n    \"customer_group\": \"Commercial\",\n    \"territory\": \"All Territories\"\n  },\n  \"payment_history\": {\n    \"has_payment_history\": true,\n    \"total_invoices_12m\": 4,\n    \"paid_invoices_12m\": 2,\n    \"payment_ratio_percent\": 50.0,\n    \"avg_payment_delay_days\": 25.0,\n    \"settled_invoice_count\": 2,\n    \"max_days_overdue\": 36,\n    \"total_outstanding\": 35000.0,\n    \"overdue_amount\": 15000.0,\n    \"total_12m_revenue\": 51500.0,\n    \"credit_utilization_percent\": 58.3\n  },\n  \"recent_orders\": [\n    {\n      \"sales_order_id\": \"SAL-ORD-2026-00006\",\n      \"date\": \"2026-07-10\",\n      \"amount\": 13100.0,\n      \"currency\": \"PLN\",\n      \"discount_percent\": 0.0,\n      \"payment_terms\": \"N/A\",\n      \"sales_rep\": \"Administrator\"\n    }\n  ],\n  \"outstanding_invoices\": [\n    {\n      \"invoice_id\": \"ACC-SINV-2026-00022\",\n      \"issue_date\": \"2026-05-18\",\n      \"due_date\": \"2026-06-17\",\n      \"amount\": 15000.0,\n      \"outstanding\": 15000.0,\n      \"days_overdue\": 36,\n      \"currency\": \"PLN\"\n    },\n    {\n      \"invoice_id\": \"ACC-SINV-2026-00023\",\n      \"issue_date\": \"2026-07-04\",\n      \"due_date\": \"2026-08-18\",\n      \"amount\": 20000.0,\n      \"outstanding\": 20000.0,\n      \"days_overdue\": 0,\n      \"currency\": \"PLN\"\n    }\n  ]\n}\n\nAssess, citing the concrete figures behind each point:\n1. Payment behavior - avg_payment_delay_days, payment_ratio_percent\n2. Overdue exposure - overdue_amount, max_days_overdue\n3. Credit utilization - credit_utilization_percent against credit_limit\n4. Outstanding debt vs revenue - total_outstanding vs total_12m_revenue\n5. Recent order patterns and overall financial stability",
+              "timestamp": "2026-07-23T10:53:02.897252"
+            },
+            {
+              "type": "llm_response",
+              "message": "AI credit analysis completed - raw response from model",
+              "data": "Here is the JSON response based on the provided customer data:\n\n{\n    \"credit_risk_level\": \"medium\",\n    \"main_risk_factors\": [\n        \"Average payment delay of 25 days, which may indicate a need for more efficient payment processing or communication with customers.\",\n        \"Payment ratio of 50% indicates that the customer is paying less than half of their outstanding invoices on time, suggesting potential cash flow issues.\"\n    ],\n    \"recommended_actions\": [\n        \"Improve payment processing efficiency to reduce average payment delay and increase payment ratio.\",\n        \"Monitor and address any potential cash flow issues promptly to avoid further delays in payments.\"\n    ],\n    \"credit_limit_recommendation\": \"increase\",\n    \"analysis_summary\": \"The customer has a medium credit risk level due to concerns about their payment behavior, overdue exposure, and credit utilization. The average payment delay of 25 days and payment ratio of 50% suggest potential cash flow issues. Additionally, the high total outstanding amount of PLN 35,000 and low revenue of PLN 51,500 indicate a significant debt burden. Increasing the credit limit may help alleviate some of these concerns, but it is essential to monitor the customer's financial performance closely.\"\n}\n\nThe customer was classified as \"medium\" risk due to several factors:\n\n1. Payment behavior: The average payment delay of 25 days and payment ratio of 50% indicate potential cash flow issues and a need for more efficient payment processing or communication with customers.\n2. Overdue exposure: The high total outstanding amount of PLN 35,000 and overdue amount of PLN 15,000 suggest that the customer is struggling to meet their payment obligations, which increases the risk of non-payment.\n3. Credit utilization: The credit utilization percent of 58.3% against a credit limit of PLN 60,000 indicates that the customer is using a significant portion of their available credit, which may lead to increased debt and reduced creditworthiness.\n4. Outstanding debt vs revenue: The high total outstanding amount of PLN 35,000 compared to the low revenue of PLN 51,500 suggests a significant debt burden, which increases the risk of non-payment.\n5. Recent order patterns and overall financial stability: While there is only one recent order, its size of PLN 13,100 may indicate that the customer has sufficient funds to meet their payment obligations. However, this single data point does not provide enough information to assess the customer's overall financial stability.\n\nOverall, the combination of these factors suggests a medium credit risk level, and increasing the credit limit may help alleviate some of these concerns. However, it is essential to monitor the customer's financial performance closely to ensure that they can meet their payment obligations.",
+              "timestamp": "2026-07-23T10:53:11.842235"
+            },
+            {
+              "type": "token_check",
+              "message": "Checking AI response for pseudonym tokens",
+              "data": {
+                "tokens_found": [],
+                "needs_depseudonymization": false
+              },
+              "timestamp": "2026-07-23T10:53:11.842254"
+            },
+            {
+              "type": "depseudonymize",
+              "message": "Restoring original customer identifiers in credit analysis",
+              "data": null,
+              "timestamp": "2026-07-23T10:53:11.842256"
+            },
+            {
+              "type": "final_response",
+              "message": "Final credit analysis with original identifiers restored",
+              "data": "Here is the JSON response based on the provided customer data:\n\n{\n    \"credit_risk_level\": \"medium\",\n    \"main_risk_factors\": [\n        \"Average payment delay of 25 days, which may indicate a need for more efficient payment processing or communication with customers.\",\n        \"Payment ratio of 50% indicates that the customer is paying less than half of their outstanding invoices on time, suggesting potential cash flow issues.\"\n    ],\n    \"recommended_actions\": [\n        \"Improve payment processing efficiency to reduce average payment delay and increase payment ratio.\",\n        \"Monitor and address any potential cash flow issues promptly to avoid further delays in payments.\"\n    ],\n    \"credit_limit_recommendation\": \"increase\",\n    \"analysis_summary\": \"The customer has a medium credit risk level due to concerns about their payment behavior, overdue exposure, and credit utilization. The average payment delay of 25 days and payment ratio of 50% suggest potential cash flow issues. Additionally, the high total outstanding amount of PLN 35,000 and low revenue of PLN 51,500 indicate a significant debt burden. Increasing the credit limit may help alleviate some of these concerns, but it is essential to monitor the customer's financial performance closely.\"\n}\n\nThe customer was classified as \"medium\" risk due to several factors:\n\n1. Payment behavior: The average payment delay of 25 days and payment ratio of 50% indicate potential cash flow issues and a need for more efficient payment processing or communication with customers.\n2. Overdue exposure: The high total outstanding amount of PLN 35,000 and overdue amount of PLN 15,000 suggest that the customer is struggling to meet their payment obligations, which increases the risk of non-payment.\n3. Credit utilization: The credit utilization percent of 58.3% against a credit limit of PLN 60,000 indicates that the customer is using a significant portion of their available credit, which may lead to increased debt and reduced creditworthiness.\n4. Outstanding debt vs revenue: The high total outstanding amount of PLN 35,000 compared to the low revenue of PLN 51,500 suggests a significant debt burden, which increases the risk of non-payment.\n5. Recent order patterns and overall financial stability: While there is only one recent order, its size of PLN 13,100 may indicate that the customer has sufficient funds to meet their payment obligations. However, this single data point does not provide enough information to assess the customer's overall financial stability.\n\nOverall, the combination of these factors suggests a medium credit risk level, and increasing the credit limit may help alleviate some of these concerns. However, it is essential to monitor the customer's financial performance closely to ensure that they can meet their payment obligations.",
+              "timestamp": "2026-07-23T10:53:11.842263"
+            },
+            {
+              "type": "complete",
+              "message": "Customer credit analysis completed with data protection maintained",
+              "data": null,
+              "timestamp": "2026-07-23T10:53:11.842265"
+            }
+          ],
+          "data_protection": {
+            "sensitive_data_count": 7,
+            "pseudonymization_successful": true
+          }
+        },
+        "step_number": 1
+      }
+    ],
+    "pipeline_log": [
+      {
+        "type": "input",
+        "message": "Analyzing user query",
+        "data": "Check credit history for MicroDevices Partners"
+      },
+      {
+        "type": "query_privacy_filter",
+        "message": "User query sanitized before tool-selection prompt",
+        "data": {
+          "raw_query_sent_to_llm": false,
+          "safe_query": "Check credit history for PERSON_01",
+          "changed": true,
+          "truncated": false,
+          "sales_order_ids_replaced": 0,
+          "customer_name_replaced": true,
+          "ner_replacements": 1,
+          "ner_enabled": true
+        }
+      },
+      {
+        "type": "think",
+        "message": "AI reasoning about tool selection",
+        "data": null
+      },
+      {
+        "type": "ai_prompt",
+        "message": "Prompt sent to AI for tool selection",
+        "data": "You are a business AI assistant with access to the following tools:\n\n- analyze_sales_order: Analyze sales order for commercial, credit, margin, and delivery risks with data pseudonymization\n- check_customer_credit_history: Check customer's payment history, outstanding invoices, and credit risk indicators\n\nUser query (privacy filtered): \"Check credit history for PERSON_01\"\n\nSelect the most appropriate tool. The query may contain placeholders such as\nSALES_ORDER_ID, CUSTOMER_NAME, PERSON_01, ORGANIZATION_01, EMAIL_01, or PHONE_01.\nActual identifiers are resolved locally by application code and are not available\nto you. Use placeholders in PARAMS when needed.\n\nRespond with:\n\nTOOL: tool_name\nPARAMS: {\"param1\": \"value1\", \"param2\": \"value2\"}\nREASONING: Brief explanation of why this tool was selected\n\nIf analyzing sales orders, look for sales order references like SALES_ORDER_ID.\nFor credit history questions, use check_customer_credit_history.\nFor sales risk analysis questions, use analyze_sales_order."
+      },
+      {
+        "type": "tool_select",
+        "message": "Selected tool: check_customer_credit_history",
+        "data": "check_customer_credit_history"
+      },
+      {
+        "type": "tool_input",
+        "message": "Tool parameters",
+        "data": {
+          "customer_name": "MicroDevices Partners"
+        }
+      },
+      {
+        "type": "input",
+        "message": "Fetching credit history data for customer: MicroDevices Partners",
+        "data": null,
+        "timestamp": "2026-07-23T10:53:02.613826"
+      },
+      {
+        "type": "data_fetch",
+        "message": "Customer credit and order history retrieved from ERP",
+        "data": {
+          "currency": "PLN",
+          "customer": {
+            "name": "MicroDevices Partners",
+            "tax_id": "33-4455667",
+            "email": "amanda.wilson@microdevices.co",
+            "phone": "+1-555-0199",
+            "address": "1678 Technology Center, 98109 Seattle",
+            "credit_limit": 60000.0,
+            "customer_group": "Commercial",
+            "territory": "All Territories"
+          },
+          "payment_history": {
+            "has_payment_history": true,
+            "total_invoices_12m": 4,
+            "paid_invoices_12m": 2,
+            "payment_ratio_percent": 50.0,
+            "avg_payment_delay_days": 25.0,
+            "settled_invoice_count": 2,
+            "max_days_overdue": 36,
+            "total_outstanding": 35000.0,
+            "overdue_amount": 15000.0,
+            "total_12m_revenue": 51500.0,
+            "credit_utilization_percent": 58.3
+          },
+          "recent_orders": [
+            {
+              "sales_order_id": "SAL-ORD-2026-00006",
+              "date": "2026-07-10",
+              "amount": 13100.0,
+              "currency": "PLN",
+              "discount_percent": 0.0,
+              "payment_terms": "N/A",
+              "sales_rep": "Administrator"
+            }
+          ],
+          "outstanding_invoices": [
+            {
+              "invoice_id": "ACC-SINV-2026-00022",
+              "issue_date": "2026-05-18",
+              "due_date": "2026-06-17",
+              "amount": 15000.0,
+              "outstanding": 15000.0,
+              "days_overdue": 36,
+              "currency": "PLN"
+            },
+            {
+              "invoice_id": "ACC-SINV-2026-00023",
+              "issue_date": "2026-07-04",
+              "due_date": "2026-08-18",
+              "amount": 20000.0,
+              "outstanding": 20000.0,
+              "days_overdue": 0,
+              "currency": "PLN"
+            }
+          ]
+        },
+        "timestamp": "2026-07-23T10:53:02.673737"
+      },
+      {
+        "type": "sensitive_data_detected",
+        "message": "SENSITIVE DATA DETECTED using Automated AI/NLP Detection",
+        "data": {
+          "sensitive_fields": {
+            "customer_name": "MicroDevices Partners",
+            "customer_email": "amanda.wilson@microdevices.co",
+            "customer_phone": "+1-555-0199",
+            "customer_address": "1678 Technology Center, 98109 Seattle",
+            "sales_rep_0": "Administrator"
+          },
+          "detection_method": "Automated AI/NLP Detection",
+          "nlp_framework": "spaCy en_core_web_sm",
+          "entity_types_supported": [
+            "CARDINAL",
+            "DATE",
+            "EVENT",
+            "FAC",
+            "GPE",
+            "LANGUAGE",
+            "LAW",
+            "LOC",
+            "MONEY",
+            "NORP"
+          ],
+          "custom_patterns": [
+            "EMAIL",
+            "PHONE",
+            "ORG",
+            "FACILITY",
+            "ZIPCODE",
+            "IBAN",
+            "SSN",
+            "CREDIT_CARD",
+            "TAX_ID"
+          ]
+        },
+        "timestamp": "2026-07-23T10:53:02.882506"
+      },
+      {
+        "type": "pseudonymize_start",
+        "message": "Starting data pseudonymization for customer credit analysis",
+        "data": null,
+        "timestamp": "2026-07-23T10:53:02.882517"
+      },
+      {
+        "type": "debug_detection",
+        "message": "\ud83d\udd0d DEBUG: What spaCy/patterns detected and mapped",
+        "data": {
+          "total_mappings": 7,
+          "all_mappings": [
+            "'MicroDevices Partners' \u2192 ORGANIZATION_01",
+            "'33-4455667' \u2192 COMPANY_01",
+            "'amanda.wilson@microdevices.co' \u2192 EMAIL_01",
+            "'1-555-0199' \u2192 PHONE_01",
+            "'Seattle' \u2192 LOCATION_01",
+            "'98109' \u2192 LOCATION_02",
+            "'Technology Center' \u2192 LOCATION_03"
+          ],
+          "spacy_used": true,
+          "manual_used": true
+        },
+        "timestamp": "2026-07-23T10:53:02.897110"
+      },
+      {
+        "type": "pseudonymize_complete",
+        "message": "Customer data pseudonymized using Automated AI/NLP Detection, Manual field mapping (fallback)",
+        "data": {
+          "summary": {
+            "total_replacements": 7,
+            "categories": {
+              "email": 1,
+              "phone": 1,
+              "company": 1,
+              "organization": 1,
+              "location": 3
+            },
+            "sample_mappings": {
+              "ORGANIZATION_01": "MicroDevices Partners",
+              "COMPANY_01": "33-4455667",
+              "EMAIL_01": "amanda.wilson@microdevices.co",
+              "PHONE_01": "1-555-0199",
+              "LOCATION_01": "Seattle"
+            },
+            "detection_methods": [
+              "Automated AI/NLP Detection",
+              "Manual field mapping (fallback)"
+            ],
+            "ner_enabled": true,
+            "ner_model": "en_core_web_sm",
+            "tools_used": {
+              "primary_method": "Automated AI/NLP Detection",
+              "nlp_framework": "spaCy en_core_web_sm",
+              "language_model": "en language model",
+              "entity_types": [
+                "CARDINAL",
+                "DATE",
+                "EVENT",
+                "FAC",
+                "GPE",
+                "LANGUAGE",
+                "LAW",
+                "LOC",
+                "MONEY",
+                "NORP",
+                "ORDINAL",
+                "ORG",
+                "PERCENT",
+                "PERSON",
+                "PRODUCT",
+                "QUANTITY",
+                "TIME",
+                "WORK_OF_ART"
+              ],
+              "custom_patterns": [
+                "EMAIL",
+                "PHONE",
+                "ORG",
+                "FACILITY",
+                "ZIPCODE",
+                "IBAN",
+                "SSN",
+                "CREDIT_CARD",
+                "TAX_ID"
+              ],
+              "automation_level": "Full automation - AI detects all sensitive data",
+              "approach": "Pure NLP - no manual field mapping"
+            }
+          },
+          "examples": [
+            "MicroDevices Partners \u2192 ORGANIZATION_01",
+            "33-4455667 \u2192 COMPANY_01",
+            "amanda.wilson@microdevices.co \u2192 EMAIL_01",
+            "1-555-0199 \u2192 PHONE_01",
+            "Seattle \u2192 LOCATION_01",
+            "98109 \u2192 LOCATION_02",
+            "Technology Center \u2192 LOCATION_03"
+          ],
+          "methods_used": [
+            "Automated AI/NLP Detection",
+            "Manual field mapping (fallback)"
+          ]
+        },
+        "timestamp": "2026-07-23T10:53:02.897182"
+      },
+      {
+        "type": "ai_prompt",
+        "message": "Credit analysis prompt sent to AI",
+        "data": "Analyze the following customer's credit and payment history for financial risk assessment.\n\nGROUNDING RULES - these override everything else:\n- Use ONLY the values present in the customer data below. Do not invent numbers,\n  credit scores, ratings, or trends that are not in the data.\n- All monetary amounts are in PLN. Never convert or relabel them.\n- If \"has_payment_history\" is false, the customer has NO invoice history. In that\n  case you MUST return \"credit_risk_level\": \"unknown\", state that payment behaviour\n  cannot be assessed, and recommend obtaining a payment history before extending\n  credit. Do NOT describe such a customer as reliable, debt free or low risk.\n- A null value means \"not measurable\", not zero and not a good result.\n- Never claim a positive trend from a single data point.\n\nRISK CLASSIFICATION - already decided, do not recompute:\nThe rule engine classified this customer as \"medium\". Copy this value into\n\"credit_risk_level\" verbatim. Your task is to explain and support that verdict with\nthe figures below, never to argue for a different level.\n\nReturn ONLY a JSON response with this exact structure:\n{\n    \"credit_risk_level\": \"medium\",\n    \"main_risk_factors\": [\"risk factor 1\", \"risk factor 2\", ...],\n    \"recommended_actions\": [\"action 1\", \"action 2\", ...],\n    \"credit_limit_recommendation\": \"increase|maintain|decrease|suspend|insufficient_data\",\n    \"analysis_summary\": \"brief summary of key findings, citing concrete numbers\"\n}\n\nCustomer data:\n{\n  \"currency\": \"PLN\",\n  \"customer\": {\n    \"name\": \"ORGANIZATION_01\",\n    \"tax_id\": \"COMPANY_01\",\n    \"email\": \"EMAIL_01\",\n    \"phone\": \"+PHONE_01\",\n    \"address\": \"1678 LOCATION_03, LOCATION_02 LOCATION_01\",\n    \"credit_limit\": 60000.0,\n    \"customer_group\": \"Commercial\",\n    \"territory\": \"All Territories\"\n  },\n  \"payment_history\": {\n    \"has_payment_history\": true,\n    \"total_invoices_12m\": 4,\n    \"paid_invoices_12m\": 2,\n    \"payment_ratio_percent\": 50.0,\n    \"avg_payment_delay_days\": 25.0,\n    \"settled_invoice_count\": 2,\n    \"max_days_overdue\": 36,\n    \"total_outstanding\": 35000.0,\n    \"overdue_amount\": 15000.0,\n    \"total_12m_revenue\": 51500.0,\n    \"credit_utilization_percent\": 58.3\n  },\n  \"recent_orders\": [\n    {\n      \"sales_order_id\": \"SAL-ORD-2026-00006\",\n      \"date\": \"2026-07-10\",\n      \"amount\": 13100.0,\n      \"currency\": \"PLN\",\n      \"discount_percent\": 0.0,\n      \"payment_terms\": \"N/A\",\n      \"sales_rep\": \"Administrator\"\n    }\n  ],\n  \"outstanding_invoices\": [\n    {\n      \"invoice_id\": \"ACC-SINV-2026-00022\",\n      \"issue_date\": \"2026-05-18\",\n      \"due_date\": \"2026-06-17\",\n      \"amount\": 15000.0,\n      \"outstanding\": 15000.0,\n      \"days_overdue\": 36,\n      \"currency\": \"PLN\"\n    },\n    {\n      \"invoice_id\": \"ACC-SINV-2026-00023\",\n      \"issue_date\": \"2026-07-04\",\n      \"due_date\": \"2026-08-18\",\n      \"amount\": 20000.0,\n      \"outstanding\": 20000.0,\n      \"days_overdue\": 0,\n      \"currency\": \"PLN\"\n    }\n  ]\n}\n\nAssess, citing the concrete figures behind each point:\n1. Payment behavior - avg_payment_delay_days, payment_ratio_percent\n2. Overdue exposure - overdue_amount, max_days_overdue\n3. Credit utilization - credit_utilization_percent against credit_limit\n4. Outstanding debt vs revenue - total_outstanding vs total_12m_revenue\n5. Recent order patterns and overall financial stability",
+        "timestamp": "2026-07-23T10:53:02.897252"
+      },
+      {
+        "type": "llm_response",
+        "message": "AI credit analysis completed - raw response from model",
+        "data": "Here is the JSON response based on the provided customer data:\n\n{\n    \"credit_risk_level\": \"medium\",\n    \"main_risk_factors\": [\n        \"Average payment delay of 25 days, which may indicate a need for more efficient payment processing or communication with customers.\",\n        \"Payment ratio of 50% indicates that the customer is paying less than half of their outstanding invoices on time, suggesting potential cash flow issues.\"\n    ],\n    \"recommended_actions\": [\n        \"Improve payment processing efficiency to reduce average payment delay and increase payment ratio.\",\n        \"Monitor and address any potential cash flow issues promptly to avoid further delays in payments.\"\n    ],\n    \"credit_limit_recommendation\": \"increase\",\n    \"analysis_summary\": \"The customer has a medium credit risk level due to concerns about their payment behavior, overdue exposure, and credit utilization. The average payment delay of 25 days and payment ratio of 50% suggest potential cash flow issues. Additionally, the high total outstanding amount of PLN 35,000 and low revenue of PLN 51,500 indicate a significant debt burden. Increasing the credit limit may help alleviate some of these concerns, but it is essential to monitor the customer's financial performance closely.\"\n}\n\nThe customer was classified as \"medium\" risk due to several factors:\n\n1. Payment behavior: The average payment delay of 25 days and payment ratio of 50% indicate potential cash flow issues and a need for more efficient payment processing or communication with customers.\n2. Overdue exposure: The high total outstanding amount of PLN 35,000 and overdue amount of PLN 15,000 suggest that the customer is struggling to meet their payment obligations, which increases the risk of non-payment.\n3. Credit utilization: The credit utilization percent of 58.3% against a credit limit of PLN 60,000 indicates that the customer is using a significant portion of their available credit, which may lead to increased debt and reduced creditworthiness.\n4. Outstanding debt vs revenue: The high total outstanding amount of PLN 35,000 compared to the low revenue of PLN 51,500 suggests a significant debt burden, which increases the risk of non-payment.\n5. Recent order patterns and overall financial stability: While there is only one recent order, its size of PLN 13,100 may indicate that the customer has sufficient funds to meet their payment obligations. However, this single data point does not provide enough information to assess the customer's overall financial stability.\n\nOverall, the combination of these factors suggests a medium credit risk level, and increasing the credit limit may help alleviate some of these concerns. However, it is essential to monitor the customer's financial performance closely to ensure that they can meet their payment obligations.",
+        "timestamp": "2026-07-23T10:53:11.842235"
+      },
+      {
+        "type": "token_check",
+        "message": "Checking AI response for pseudonym tokens",
+        "data": {
+          "tokens_found": [],
+          "needs_depseudonymization": false
+        },
+        "timestamp": "2026-07-23T10:53:11.842254"
+      },
+      {
+        "type": "depseudonymize",
+        "message": "Restoring original customer identifiers in credit analysis",
+        "data": null,
+        "timestamp": "2026-07-23T10:53:11.842256"
+      },
+      {
+        "type": "final_response",
+        "message": "Final credit analysis with original identifiers restored",
+        "data": "Here is the JSON response based on the provided customer data:\n\n{\n    \"credit_risk_level\": \"medium\",\n    \"main_risk_factors\": [\n        \"Average payment delay of 25 days, which may indicate a need for more efficient payment processing or communication with customers.\",\n        \"Payment ratio of 50% indicates that the customer is paying less than half of their outstanding invoices on time, suggesting potential cash flow issues.\"\n    ],\n    \"recommended_actions\": [\n        \"Improve payment processing efficiency to reduce average payment delay and increase payment ratio.\",\n        \"Monitor and address any potential cash flow issues promptly to avoid further delays in payments.\"\n    ],\n    \"credit_limit_recommendation\": \"increase\",\n    \"analysis_summary\": \"The customer has a medium credit risk level due to concerns about their payment behavior, overdue exposure, and credit utilization. The average payment delay of 25 days and payment ratio of 50% suggest potential cash flow issues. Additionally, the high total outstanding amount of PLN 35,000 and low revenue of PLN 51,500 indicate a significant debt burden. Increasing the credit limit may help alleviate some of these concerns, but it is essential to monitor the customer's financial performance closely.\"\n}\n\nThe customer was classified as \"medium\" risk due to several factors:\n\n1. Payment behavior: The average payment delay of 25 days and payment ratio of 50% indicate potential cash flow issues and a need for more efficient payment processing or communication with customers.\n2. Overdue exposure: The high total outstanding amount of PLN 35,000 and overdue amount of PLN 15,000 suggest that the customer is struggling to meet their payment obligations, which increases the risk of non-payment.\n3. Credit utilization: The credit utilization percent of 58.3% against a credit limit of PLN 60,000 indicates that the customer is using a significant portion of their available credit, which may lead to increased debt and reduced creditworthiness.\n4. Outstanding debt vs revenue: The high total outstanding amount of PLN 35,000 compared to the low revenue of PLN 51,500 suggests a significant debt burden, which increases the risk of non-payment.\n5. Recent order patterns and overall financial stability: While there is only one recent order, its size of PLN 13,100 may indicate that the customer has sufficient funds to meet their payment obligations. However, this single data point does not provide enough information to assess the customer's overall financial stability.\n\nOverall, the combination of these factors suggests a medium credit risk level, and increasing the credit limit may help alleviate some of these concerns. However, it is essential to monitor the customer's financial performance closely to ensure that they can meet their payment obligations.",
+        "timestamp": "2026-07-23T10:53:11.842263"
+      },
+      {
+        "type": "complete",
+        "message": "Customer credit analysis completed with data protection maintained",
+        "data": null,
+        "timestamp": "2026-07-23T10:53:11.842265"
+      },
+      {
+        "type": "tool_output",
+        "message": "Tool execution completed",
+        "data": {
+          "success": true,
+          "has_analysis": true
+        }
+      },
+      {
+        "type": "ai_prompt",
+        "message": "Final answer formatting prompt sent to AI",
+        "data": "You are a business AI assistant presenting a customer credit review.\n\nTECHNICAL ANALYSIS RESULTS:\nHere is the JSON response based on the provided customer data:\n\n{\n    \"credit_risk_level\": \"medium\",\n    \"main_risk_factors\": [\n        \"Average payment delay of 25 days, which may indicate a need for more efficient payment processing or communication with customers.\",\n        \"Payment ratio of 50% indicates that the customer is paying less than half of their outstanding invoices on time, suggesting potential cash flow issues.\"\n    ],\n    \"recommended_actions\": [\n        \"Improve payment processing efficiency to reduce average payment delay and increase payment ratio.\",\n        \"Monitor and address any potential cash flow issues promptly to avoid further delays in payments.\"\n    ],\n    \"credit_limit_recommendation\": \"increase\",\n    \"analysis_summary\": \"The customer has a medium credit risk level due to concerns about their payment behavior, overdue exposure, and credit utilization. The average payment delay of 25 days and payment ratio of 50% suggest potential cash flow issues. Additionally, the high total outstanding amount of PLN 35,000 and low revenue of PLN 51,500 indicate a significant debt burden. Increasing the credit limit may help alleviate some of these concerns, but it is essential to monitor the customer's financial performance closely.\"\n}\n\nThe customer was classified as \"medium\" risk due to several factors:\n\n1. Payment behavior: The average payment delay of 25 days and payment ratio of 50% indicate potential cash flow issues and a need for more efficient payment processing or communication with customers.\n2. Overdue exposure: The high total outstanding amount of PLN 35,000 and overdue amount of PLN 15,000 suggest that the customer is struggling to meet their payment obligations, which increases the risk of non-payment.\n3. Credit utilization: The credit utilization percent of 58.3% against a credit limit of PLN 60,000 indicates that the customer is using a significant portion of their available credit, which may lead to increased debt and reduced creditworthiness.\n4. Outstanding debt vs revenue: The high total outstanding amount of PLN 35,000 compared to the low revenue of PLN 51,500 suggests a significant debt burden, which increases the risk of non-payment.\n5. Recent order patterns and overall financial stability: While there is only one recent order, its size of PLN 13,100 may indicate that the customer has sufficient funds to meet their payment obligations. However, this single data point does not provide enough information to assess the customer's overall financial stability.\n\nOverall, the combination of these factors suggests a medium credit risk level, and increasing the credit limit may help alleviate some of these concerns. However, it is essential to monitor the customer's financial performance closely to ensure that they can meet their payment obligations.\n\nVERIFIED FIGURES (authoritative - quote these, never contradict them):\n{\n  \"currency\": \"PLN\",\n  \"credit_limit\": 60000.0,\n  \"rule_based_risk_level\": \"medium\",\n  \"payment_history\": {\n    \"has_payment_history\": true,\n    \"total_invoices_12m\": 4,\n    \"paid_invoices_12m\": 2,\n    \"payment_ratio_percent\": 50.0,\n    \"avg_payment_delay_days\": 25.0,\n    \"settled_invoice_count\": 2,\n    \"max_days_overdue\": 36,\n    \"total_outstanding\": 35000.0,\n    \"overdue_amount\": 15000.0,\n    \"total_12m_revenue\": 51500.0,\n    \"credit_utilization_percent\": 58.3\n  },\n  \"outstanding_invoice_count\": 2,\n  \"recent_order_count\": 1\n}\n\nGROUNDING RULES - these override the formatting requirements:\n- Reformat ONLY what the analysis results contain. Never add findings, numbers,\n  ratings or reassurances that are not present above.\n- Every bullet must cite a concrete figure from the analysis results.\n- If the analysis reports unknown risk or missing data, say so plainly and do not\n  fill the section with generic positive statements.\n- If a section has no supporting data, write \"Not assessable - no data available\"\n  instead of inventing content.\n- The risk level must match \"rule_based_risk_level\" from the verified figures\n  exactly. It was decided by a rule engine and is not open to reinterpretation.\n- Never state that a customer pays on time, has no debt or has a good credit score\n  unless the analysis results explicitly support it with figures.\n\nSTRUCTURE YOUR RESPONSE EXACTLY LIKE THIS:\n\n## Executive Summary\n[2-3 sentences: the customer's payment standing and the headline credit risk]\n\n## Payment Behaviour\n\u2022 Invoices settled: [paid vs total, with percentage]\n\u2022 Average payment delay: [days, or \"not measurable\"]\n\u2022 Overdue exposure: [overdue amount and maximum days overdue]\n\n## Credit Exposure\n\u2022 Outstanding balance vs credit limit: [amounts and utilization percentage]\n\u2022 Outstanding vs 12-month revenue: [both figures]\n\n## Risk Assessment\n\u2022 Risk Level: [High/Medium/Low/Unknown]\n\u2022 Main Risk Factors: [one bullet per factor, each with its supporting figure]\n\n## Recommendations\n\u2022 Credit limit: [increase/maintain/decrease/suspend, or \"insufficient data\"]\n\u2022 Action 1: [specific recommendation]\n\u2022 Action 2: [specific recommendation]\n\nUse markdown headers and bullet points exactly as shown."
+      },
+      {
+        "type": "finish",
+        "message": "Analysis completed",
+        "data": "## Executive Summary\nThe customer has a medium credit risk level due to concerns about their payment behavior, overdue exposure, and credit utilization.\n\n## Payment Behaviour\n\u2022 Invoices settled: Paid invoices: 2 / Total invoices: 4, Payment ratio percent: 50.0%\n\u2022 Average payment delay: 25 days\n\u2022 Overdue exposure: Overdue amount: PLN 15,000, Maximum days overdue: 36\n\n## Credit Exposure\n\u2022 Outstanding balance vs credit limit: Outstanding balance: PLN 35,000, Credit utilization percent: 58.3%\n\u2022 Outstanding vs 12-month revenue: Total outstanding: PLN 35,000, Total 12-month revenue: PLN 51,500\n\n## Risk Assessment\n\u2022 Risk Level: Medium\n\u2022 Main Risk Factors:\n  \u2022 Average payment delay of 25 days may indicate a need for more efficient payment processing or communication with customers.\n  \u2022 Payment ratio of 50% suggests potential cash flow issues.\n\n## Recommendations\n\u2022 Credit limit: Increase\n\u2022 Action 1: Improve payment processing efficiency to reduce average payment delay and increase payment ratio.\n\u2022 Action 2: Monitor and address any potential cash flow issues promptly to avoid further delays in payments."
+      }
+    ]
+  }
+}

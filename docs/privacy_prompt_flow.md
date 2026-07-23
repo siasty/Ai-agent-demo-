@@ -27,14 +27,14 @@ flowchart TD
     SO --> PSO[BusinessPseudonymizer.pseudonymize_sales_order]
     CR --> PCR[BusinessPseudonymizer.pseudonymize_customer_data]
 
-    PSO --> SOD[Safe sales-order payload]
-    PCR --> CRD[Safe credit payload]
+    PSO --> SOD[Safe sales-order payload built locally]
+    PCR --> CRD[Safe credit payload built locally]
 
-    SOD --> P2[Prompt 2: sales-order risk analysis]
-    CRD --> P3[Prompt 3: credit analysis]
+    SOD --> P2[Build complete Prompt 2 locally:<br/>sales-order risk analysis plus safe payload]
+    CRD --> P3[Build complete Prompt 3 locally:<br/>credit analysis plus safe payload]
 
-    P2 --> O2[Ollama returns analysis with tokens]
-    P3 --> O3[Ollama returns analysis with tokens]
+    P2 --> O2[Single Ollama request:<br/>analysis returned with tokens]
+    P3 --> O3[Single Ollama request:<br/>analysis returned with tokens]
 
     O2 --> P4[Prompt 4: final sales-order formatting with tokens]
     O3 --> P5[Prompt 5: final credit formatting with tokens]
@@ -44,6 +44,41 @@ flowchart TD
 
     FO --> R[Local depseudonymization]
     R --> UI[Final answer shown in UI]
+```
+
+The safe ERP payload is not a separate model request. Application code embeds it
+in Prompt 2 or Prompt 3 first, then logs one `ai_prompt` event immediately before
+the corresponding Ollama request. The obsolete `ai_input_data` and empty
+`llm_analysis` events are no longer emitted.
+
+## Recorded Credit Pipeline Events
+
+The bundled `Check credit history for MicroDevices Partners` recording contains
+21 raw backend events. The interactive viewer combines related prompt/response
+pairs and hides status-only events, producing 9 presentation steps.
+
+```mermaid
+flowchart TD
+    E01["1 input<br/>raw user query"] --> E02["2 query_privacy_filter<br/>safe query created"]
+    E02 --> E03["3 think<br/>tool-selection status"]
+    E03 --> E04["4 ai_prompt<br/>safe tool-selection prompt"]
+    E04 --> E05["5 tool_select<br/>selected tool"]
+    E05 --> E06["6 tool_input<br/>local customer parameter"]
+    E06 --> E07["7 input<br/>ERP fetch status"]
+    E07 --> E08["8 data_fetch<br/>ERP result"]
+    E08 --> E09["9 sensitive_data_detected"]
+    E09 --> E10["10 pseudonymize_start"]
+    E10 --> E11["11 debug_detection"]
+    E11 --> E12["12 pseudonymize_complete"]
+    E12 --> E13["13 ai_prompt<br/>complete credit-analysis prompt"]
+    E13 --> E14["14 llm_response<br/>credit analysis"]
+    E14 --> E15["15 token_check"]
+    E15 --> E16["16 depseudonymize"]
+    E16 --> E17["17 final_response<br/>local tool result"]
+    E17 --> E18["18 complete"]
+    E18 --> E19["19 tool_output"]
+    E19 --> E20["20 ai_prompt<br/>final formatting prompt"]
+    E20 --> E21["21 finish<br/>final answer"]
 ```
 
 ## Prompt Map

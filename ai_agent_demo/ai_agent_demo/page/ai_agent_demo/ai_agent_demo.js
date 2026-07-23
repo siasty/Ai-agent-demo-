@@ -46,10 +46,7 @@ const LOG_CFG = {
     pseudonymize_start:      { icon: "🔒", color: "#dc3545", bg: "#fff5f5", title: "PSEUDONYMIZATION START" },
     debug_detection:         { icon: "🐛", color: "#6c757d", bg: "#f8f9fa", title: "DETECTION DEBUG" },
     pseudonymize_complete:   { icon: "✅", color: "#dc3545", bg: "#fff5f5", title: "PSEUDONYMIZATION COMPLETE" },
-    ai_input_data:           { icon: "🤖", color: "#28a745", bg: "#f0fff4", title: "AI INPUT DATA (SAFE)" },
-
     // LLM analysis
-    llm_analysis:            { icon: "🧠", color: "#6f42c1", bg: "#f8f5ff", title: "AI ANALYSIS" },
     ai_prompt:               { icon: "📝", color: "#495057", bg: "#f8f9fa", title: "AI PROMPT" },
     llm_response:            { icon: "💬", color: "#6f42c1", bg: "#f8f5ff", title: "AI RESPONSE" },
     token_check:             { icon: "🔍", color: "#856404", bg: "#fffbef", title: "TOKEN CHECK" },
@@ -294,7 +291,7 @@ class AIAgentDemoPage {
         if (data === null || data === undefined || data === "") return "";
 
         // Try to detect and parse JSON strings in AI responses
-        if (typeof data === "string" && (type === "llm_response" || type === "llm_analysis" || type === "final_response" || type === "finish" || type === "ai_input_data")) {
+        if (typeof data === "string" && (type === "llm_response" || type === "final_response" || type === "finish")) {
             // First check if the entire string is JSON
             const trimmed = data.trim();
             if ((trimmed.startsWith('{') && trimmed.endsWith('}')) ||

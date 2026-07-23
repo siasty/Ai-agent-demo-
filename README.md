@@ -55,19 +55,27 @@ User query
    │
    ▼
 BusinessAgent.run()                           ← core/agent.py
+   │  ├─ _create_safe_tool_selection_query
    │  ├─ _create_tool_selection_prompt
-   │  ├─ Ollama.chat (llama3.2)
-   │  └─ _parse_tool_selection
+   │  ├─ Ollama /api/generate (llama3.2)
+   │  └─ _parse_tool_selection (local ID extraction and validation)
    ▼
 Tool.execute()                                ← core/tools.py
    │  ├─ fetch ERP data (frappe.get_doc / frappe.db.sql)
-   │  ├─ BusinessPseudonymizer.pseudonymize_sales_order
+   │  ├─ BusinessPseudonymizer
    │  │     └─ SpacyNERDetector.detect_entities    ← core/ner_detector.py
-   │  ├─ Ollama.chat (analysis prompt with pseudonymized data)
+   │  ├─ build one complete prompt containing pseudonymized ERP data
+   │  ├─ Ollama /api/generate (single analysis request)
    │  └─ BusinessPseudonymizer.depseudonymize_text
+   ▼
+BusinessAgent creates final formatting prompt
+   │  └─ Ollama /api/generate (tokenized analysis + numeric metrics)
    ▼
 pipeline_log returned to the page             ← page/ai_agent_demo/ai_agent_demo.js
 ```
+
+Pseudonymized ERP data is embedded locally in the complete analysis prompt. It is
+not sent to the model or logged as a separate `ai_input_data` event before that prompt.
 
 ## Privacy-safe prompt flow
 
@@ -92,15 +100,23 @@ flowchart TD
     Tool -->|Sales Order| FetchSO["Fetch Sales Order data"]
     Tool -->|Credit history| FetchCredit["Fetch Customer and Invoice data"]
 
-    FetchSO --> Pseudo["BusinessPseudonymizer"]
+    FetchSO --> Pseudo["BusinessPseudonymizer<br/>replace identifiers with tokens"]
     FetchCredit --> Pseudo
-    Pseudo --> AnalysisPrompt["Analysis prompt<br/>pseudonymized ERP data"]
-    AnalysisPrompt --> Analysis["Ollama analysis with tokens"]
+    Pseudo --> BuildPrompt["Build complete analysis prompt locally<br/>pseudonymized ERP payload embedded once"]
+    BuildPrompt --> AnalysisPrompt["AI PROMPT event<br/>single Ollama request"]
+    AnalysisPrompt --> Analysis["AI RESPONSE event<br/>analysis with tokens"]
 
-    Analysis --> FinalPrompt["Final formatting prompt<br/>tokenized analysis + numeric metrics"]
-    FinalPrompt --> SafeAnswer["Formatted answer with tokens"]
+    Analysis --> TokenCheck["Local token check"]
+    TokenCheck --> FinalPrompt["Final formatting prompt<br/>tokenized analysis + numeric metrics"]
+    FinalPrompt --> SafeAnswer["Ollama formatted answer with tokens"]
     SafeAnswer --> Restore["Local depseudonymization"]
     Restore --> UI["Final answer in UI"]
+
+    Agent -.-> Log["pipeline_log<br/>21 raw events in the recorded credit example"]
+    Pseudo -.-> Log
+    AnalysisPrompt -.-> Log
+    Analysis -.-> Log
+    UI -.-> Log
 ```
 
 Detailed privacy and prompt flow map:
@@ -140,6 +156,18 @@ Open in the Desk: **Menu → AI Agent Demo**, or go directly to `/app/ai-agent-d
 
 - `Analyze sales order SAL-ORD-2026-00006 for risks`
 - `Check credit history for MicroDevices Partners`
+
+## Recorded event-log demo
+
+The generated recording for `Check credit history for MicroDevices Partners` is stored in
+[`demo_recordings/credit_history_event_viewer.html`](demo_recordings/credit_history_event_viewer.html).
+It uses the full `run_agent` result. The source log has 21 `pipeline_log` events; the viewer shows
+9 presentation steps by hiding status-only markers and presenting each meaningful operation as
+payload plus response where applicable. Click any event in the timeline to inspect the payload for
+that step.
+
+Source data for the same run is available as
+[`demo_recordings/credit_history_tool_demo.json`](demo_recordings/credit_history_tool_demo.json).
 
 ## License
 

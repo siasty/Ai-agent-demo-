@@ -110,7 +110,7 @@ class BusinessAgent:
         if so_match:
             return {
                 "tool_name": "analyze_sales_order",
-                "parameters": {"sales_order_id": so_match.group(1)}
+                "parameters": {"sales_order_id": so_match.group(0)}
             }
 
         # Priority 2: Customer credit mentions in the query
@@ -152,7 +152,7 @@ class BusinessAgent:
                     if tool_name == "analyze_sales_order":
                         so_match = SALES_ORDER_ID_PATTERN.search(params_match.group(1))
                         if so_match:
-                            params = {"sales_order_id": so_match.group(1)}
+                            params = {"sales_order_id": so_match.group(0)}
                     elif tool_name == "check_customer_credit_history":
                         name_match = re.search(r'["\']([^"\']+)["\']', params_match.group(1))
                         if name_match:

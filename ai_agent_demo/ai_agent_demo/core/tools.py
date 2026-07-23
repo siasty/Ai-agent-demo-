@@ -372,13 +372,7 @@ Focus on:
                         "tools_used": summary['tools_used']
                     })
 
-            # Show what data is being sent to AI
-            log_step("ai_input_data", "Pseudonymized data being sent to AI (safe for processing)", pseudonymized_data)
-
-            # Step 3: LLM Analysis
-            log_step("llm_analysis", "Sending pseudonymized data to AI for risk analysis")
-
-            # Create and log the analysis prompt
+            # Step 3: Build the complete prompt before the single LLM request.
             analysis_prompt = self._create_analysis_prompt(pseudonymized_data)
             log_step("ai_prompt", "Analysis prompt sent to AI", analysis_prompt)
 
@@ -878,13 +872,7 @@ Assess, citing the concrete figures behind each point:
                         "methods_used": summary['detection_methods']
                     })
 
-            # Show what data is being sent to AI
-            log_step("ai_input_data", "Pseudonymized customer data being sent to AI (safe for processing)", pseudonymized_data)
-
-            # Step 3: LLM Analysis
-            log_step("llm_analysis", "Sending pseudonymized customer data to AI for credit analysis")
-
-            # Create and log the analysis prompt
+            # Step 3: Build the complete prompt before the single LLM request.
             analysis_prompt = self._create_credit_analysis_prompt(pseudonymized_data)
             log_step("ai_prompt", "Credit analysis prompt sent to AI", analysis_prompt)
 

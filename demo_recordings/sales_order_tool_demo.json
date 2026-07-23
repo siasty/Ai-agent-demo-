@@ -1,0 +1,381 @@
+{
+  "sales_order_id": "SAL-ORD-2026-00006",
+  "analysis": "{\n    \"risk_level\": \"low\",\n    \"main_risk_factors\": [\"credit risk due to high current exposure\", \"margin risk due to unusual discount percent\"],\n    \"recommended_actions\": [\"Monitor customer's credit history and limit usage\", \"Verify the reasonability of the requested discounts/margins\"],\n    \"manual_review_required\": true,\n    \"analysis_summary\": \"The sales order has a high credit risk due to the customer's current exposure exceeding their credit limit. Additionally, there is a margin risk due to an unusual discount percent on one of the items.\"\n}",
+  "analysis_for_llm": "{\n    \"risk_level\": \"low\",\n    \"main_risk_factors\": [\"credit risk due to high current exposure\", \"margin risk due to unusual discount percent\"],\n    \"recommended_actions\": [\"Monitor customer's credit history and limit usage\", \"Verify the reasonability of the requested discounts/margins\"],\n    \"manual_review_required\": true,\n    \"analysis_summary\": \"The sales order has a high credit risk due to the customer's current exposure exceeding their credit limit. Additionally, there is a margin risk due to an unusual discount percent on one of the items.\"\n}",
+  "pseudonym_reverse_mapping": {
+    "ORGANIZATION_01": "MicroDevices Partners",
+    "COMPANY_01": "33-4455667",
+    "EMAIL_01": "amanda.wilson@microdevices.co",
+    "PHONE_01": "1-555-0199",
+    "LOCATION_01": "Seattle",
+    "LOCATION_02": "98109",
+    "LOCATION_03": "Technology Center"
+  },
+  "metrics": {
+    "currency": "PLN",
+    "order_total_net": 13100.0,
+    "discount_percent": 0.0,
+    "historical_avg_discount_percent": 0.0,
+    "customer_credit_limit": 60000.0,
+    "customer_current_exposure": 35000.0,
+    "requested_delivery_date": "2026-07-22",
+    "item_count": 3,
+    "min_item_margin_percent": 16.0
+  },
+  "pipeline_log": [
+    {
+      "type": "input",
+      "message": "Fetching sales order data for SAL-ORD-2026-00006",
+      "data": null,
+      "timestamp": "2026-07-23T09:38:33.037351"
+    },
+    {
+      "type": "data_fetch",
+      "message": "Raw sales order data retrieved from ERP",
+      "data": {
+        "sales_order_id": "SAL-ORD-2026-00006",
+        "customer": {
+          "name": "MicroDevices Partners",
+          "tax_id": "33-4455667",
+          "email": "amanda.wilson@microdevices.co",
+          "phone": "+1-555-0199",
+          "address": "1678 Technology Center, 98109 Seattle",
+          "credit_limit": 60000.0,
+          "current_exposure": 35000.0,
+          "payment_terms": "N/A"
+        },
+        "sales_rep": {
+          "name": "Administrator",
+          "email": "Administrator"
+        },
+        "order": {
+          "currency": "PLN",
+          "total_net": 13100.0,
+          "requested_delivery_date": "2026-07-22",
+          "shipping_address": "Same as billing",
+          "discount_percent": 0.0,
+          "historical_avg_discount_percent": 0.0
+        },
+        "items": [
+          {
+            "sku": "SENSOR-DHT22",
+            "description": "DHT22 Temperature Humidity Sensor",
+            "quantity": 450.0,
+            "unit_price": 18.0,
+            "unit_cost": 10.8,
+            "margin_percent": 40.0
+          },
+          {
+            "sku": "LCD-16X2",
+            "description": "16x2 Character LCD Display",
+            "quantity": 300.0,
+            "unit_price": 12.5,
+            "unit_cost": 7.0,
+            "margin_percent": 44.0
+          },
+          {
+            "sku": "CAP-100UF",
+            "description": "100µF Electrolytic Capacitor",
+            "quantity": 500.0,
+            "unit_price": 2.5,
+            "unit_cost": 2.1,
+            "margin_percent": 16.0
+          }
+        ],
+        "notes": " "
+      },
+      "timestamp": "2026-07-23T09:38:33.192505"
+    },
+    {
+      "type": "sensitive_data_detected",
+      "message": "SENSITIVE DATA DETECTED using Automated AI/NLP Detection",
+      "data": {
+        "sensitive_fields": {
+          "customer_name": "MicroDevices Partners",
+          "customer_email": "amanda.wilson@microdevices.co",
+          "customer_phone": "+1-555-0199",
+          "customer_address": "1678 Technology Center, 98109 Seattle",
+          "sales_rep_name": "Administrator",
+          "sales_rep_email": "Administrator"
+        },
+        "detection_method": "Automated AI/NLP Detection",
+        "nlp_framework": "spaCy en_core_web_sm",
+        "language_model": "en language model",
+        "entity_types_supported": [
+          "CARDINAL",
+          "DATE",
+          "EVENT",
+          "FAC",
+          "GPE",
+          "LANGUAGE",
+          "LAW",
+          "LOC",
+          "MONEY",
+          "NORP"
+        ],
+        "custom_patterns": [
+          "EMAIL",
+          "PHONE",
+          "ORG",
+          "FACILITY",
+          "ZIPCODE",
+          "IBAN",
+          "SSN",
+          "CREDIT_CARD",
+          "TAX_ID"
+        ]
+      },
+      "timestamp": "2026-07-23T09:38:33.439629"
+    },
+    {
+      "type": "pseudonymize_start",
+      "message": "Starting data pseudonymization with NER detection for privacy protection",
+      "data": null,
+      "timestamp": "2026-07-23T09:38:33.439640"
+    },
+    {
+      "type": "debug_detection",
+      "message": "🔍 DEBUG: What spaCy/patterns detected and mapped",
+      "data": {
+        "total_mappings": 7,
+        "all_mappings": [
+          "'MicroDevices Partners' → ORGANIZATION_01",
+          "'33-4455667' → COMPANY_01",
+          "'amanda.wilson@microdevices.co' → EMAIL_01",
+          "'1-555-0199' → PHONE_01",
+          "'Seattle' → LOCATION_01",
+          "'98109' → LOCATION_02",
+          "'Technology Center' → LOCATION_03"
+        ],
+        "spacy_used": true,
+        "manual_used": true
+      },
+      "timestamp": "2026-07-23T09:38:33.469856"
+    },
+    {
+      "type": "pseudonymize_complete",
+      "message": "Data pseudonymized using Automated AI/NLP Detection, Manual field mapping (fallback) - sensitive information replaced with tokens",
+      "data": {
+        "summary": {
+          "total_replacements": 7,
+          "categories": {
+            "email": 1,
+            "phone": 1,
+            "company": 1,
+            "organization": 1,
+            "location": 3
+          },
+          "sample_mappings": {
+            "ORGANIZATION_01": "MicroDevices Partners",
+            "COMPANY_01": "33-4455667",
+            "EMAIL_01": "amanda.wilson@microdevices.co",
+            "PHONE_01": "1-555-0199",
+            "LOCATION_01": "Seattle"
+          },
+          "detection_methods": [
+            "Automated AI/NLP Detection",
+            "Manual field mapping (fallback)"
+          ],
+          "ner_enabled": true,
+          "ner_model": "en_core_web_sm",
+          "tools_used": {
+            "primary_method": "Automated AI/NLP Detection",
+            "nlp_framework": "spaCy en_core_web_sm",
+            "language_model": "en language model",
+            "entity_types": [
+              "CARDINAL",
+              "DATE",
+              "EVENT",
+              "FAC",
+              "GPE",
+              "LANGUAGE",
+              "LAW",
+              "LOC",
+              "MONEY",
+              "NORP",
+              "ORDINAL",
+              "ORG",
+              "PERCENT",
+              "PERSON",
+              "PRODUCT",
+              "QUANTITY",
+              "TIME",
+              "WORK_OF_ART"
+            ],
+            "custom_patterns": [
+              "EMAIL",
+              "PHONE",
+              "ORG",
+              "FACILITY",
+              "ZIPCODE",
+              "IBAN",
+              "SSN",
+              "CREDIT_CARD",
+              "TAX_ID"
+            ],
+            "automation_level": "Full automation - AI detects all sensitive data",
+            "approach": "Pure NLP - no manual field mapping"
+          }
+        },
+        "examples": [
+          "MicroDevices Partners → ORGANIZATION_01",
+          "33-4455667 → COMPANY_01",
+          "amanda.wilson@microdevices.co → EMAIL_01",
+          "1-555-0199 → PHONE_01",
+          "Seattle → LOCATION_01",
+          "98109 → LOCATION_02",
+          "Technology Center → LOCATION_03"
+        ],
+        "methods_used": [
+          "Automated AI/NLP Detection",
+          "Manual field mapping (fallback)"
+        ],
+        "tools_used": {
+          "primary_method": "Automated AI/NLP Detection",
+          "nlp_framework": "spaCy en_core_web_sm",
+          "language_model": "en language model",
+          "entity_types": [
+            "CARDINAL",
+            "DATE",
+            "EVENT",
+            "FAC",
+            "GPE",
+            "LANGUAGE",
+            "LAW",
+            "LOC",
+            "MONEY",
+            "NORP",
+            "ORDINAL",
+            "ORG",
+            "PERCENT",
+            "PERSON",
+            "PRODUCT",
+            "QUANTITY",
+            "TIME",
+            "WORK_OF_ART"
+          ],
+          "custom_patterns": [
+            "EMAIL",
+            "PHONE",
+            "ORG",
+            "FACILITY",
+            "ZIPCODE",
+            "IBAN",
+            "SSN",
+            "CREDIT_CARD",
+            "TAX_ID"
+          ],
+          "automation_level": "Full automation - AI detects all sensitive data",
+          "approach": "Pure NLP - no manual field mapping"
+        }
+      },
+      "timestamp": "2026-07-23T09:38:33.469932"
+    },
+    {
+      "type": "ai_input_data",
+      "message": "Pseudonymized data being sent to AI (safe for processing)",
+      "data": {
+        "sales_order_id": "SAL-ORD-2026-00006",
+        "customer": {
+          "name": "ORGANIZATION_01",
+          "tax_id": "COMPANY_01",
+          "email": "EMAIL_01",
+          "phone": "+PHONE_01",
+          "address": "1678 LOCATION_03, LOCATION_02 LOCATION_01",
+          "credit_limit": 60000.0,
+          "current_exposure": 35000.0,
+          "payment_terms": "N/A"
+        },
+        "sales_rep": {
+          "name": "Administrator",
+          "email": "Administrator"
+        },
+        "order": {
+          "currency": "PLN",
+          "total_net": 13100.0,
+          "requested_delivery_date": "2026-07-22",
+          "shipping_address": "Same as billing",
+          "discount_percent": 0.0,
+          "historical_avg_discount_percent": 0.0
+        },
+        "items": [
+          {
+            "sku": "SENSOR-DHT22",
+            "description": "DHT22 Temperature Humidity Sensor",
+            "quantity": 450.0,
+            "unit_price": 18.0,
+            "unit_cost": 10.8,
+            "margin_percent": 40.0
+          },
+          {
+            "sku": "LCD-16X2",
+            "description": "16x2 Character LCD Display",
+            "quantity": 300.0,
+            "unit_price": 12.5,
+            "unit_cost": 7.0,
+            "margin_percent": 44.0
+          },
+          {
+            "sku": "CAP-100UF",
+            "description": "100µF Electrolytic Capacitor",
+            "quantity": 500.0,
+            "unit_price": 2.5,
+            "unit_cost": 2.1,
+            "margin_percent": 16.0
+          }
+        ],
+        "notes": " "
+      },
+      "timestamp": "2026-07-23T09:38:33.469934"
+    },
+    {
+      "type": "llm_analysis",
+      "message": "Sending pseudonymized data to AI for risk analysis",
+      "data": null,
+      "timestamp": "2026-07-23T09:38:33.469936"
+    },
+    {
+      "type": "ai_prompt",
+      "message": "Analysis prompt sent to AI",
+      "data": "Analyze the following sales order for commercial, credit, margin, and delivery risk.\n\nGROUNDING RULES - these override everything else:\n- Use ONLY the values present in the sales order data below. Do not invent numbers,\n  ratings or history that are not in the data.\n- All monetary amounts are in PLN. Always write the amount followed by\n  \"PLN\". Never use a currency symbol such as $ and never convert values.\n- A null or missing value means \"not measurable\", not zero and not a good result.\n- Cite the concrete figure behind every risk factor you report.\n\nReturn ONLY a JSON response with this exact structure:\n{\n    \"risk_level\": \"low|medium|high\",\n    \"main_risk_factors\": [\"risk factor 1\", \"risk factor 2\", ...],\n    \"recommended_actions\": [\"action 1\", \"action 2\", ...],\n    \"manual_review_required\": true|false,\n    \"analysis_summary\": \"brief summary of key findings\"\n}\n\nSales order data:\n{\n  \"sales_order_id\": \"SAL-ORD-2026-00006\",\n  \"customer\": {\n    \"name\": \"ORGANIZATION_01\",\n    \"tax_id\": \"COMPANY_01\",\n    \"email\": \"EMAIL_01\",\n    \"phone\": \"+PHONE_01\",\n    \"address\": \"1678 LOCATION_03, LOCATION_02 LOCATION_01\",\n    \"credit_limit\": 60000.0,\n    \"current_exposure\": 35000.0,\n    \"payment_terms\": \"N/A\"\n  },\n  \"sales_rep\": {\n    \"name\": \"Administrator\",\n    \"email\": \"Administrator\"\n  },\n  \"order\": {\n    \"currency\": \"PLN\",\n    \"total_net\": 13100.0,\n    \"requested_delivery_date\": \"2026-07-22\",\n    \"shipping_address\": \"Same as billing\",\n    \"discount_percent\": 0.0,\n    \"historical_avg_discount_percent\": 0.0\n  },\n  \"items\": [\n    {\n      \"sku\": \"SENSOR-DHT22\",\n      \"description\": \"DHT22 Temperature Humidity Sensor\",\n      \"quantity\": 450.0,\n      \"unit_price\": 18.0,\n      \"unit_cost\": 10.8,\n      \"margin_percent\": 40.0\n    },\n    {\n      \"sku\": \"LCD-16X2\",\n      \"description\": \"16x2 Character LCD Display\",\n      \"quantity\": 300.0,\n      \"unit_price\": 12.5,\n      \"unit_cost\": 7.0,\n      \"margin_percent\": 44.0\n    },\n    {\n      \"sku\": \"CAP-100UF\",\n      \"description\": \"100µF Electrolytic Capacitor\",\n      \"quantity\": 500.0,\n      \"unit_price\": 2.5,\n      \"unit_cost\": 2.1,\n      \"margin_percent\": 16.0\n    }\n  ],\n  \"notes\": \" \"\n}\n\nFocus on:\n1. Credit risk (exposure vs limits)\n2. Margin risk (unusual discounts/margins)\n3. Commercial risk (order patterns, amounts)\n4. Delivery/logistics risk (timing, addresses)",
+      "timestamp": "2026-07-23T09:38:33.470016"
+    },
+    {
+      "type": "llm_response",
+      "message": "AI analysis completed - raw response from model",
+      "data": "{\n    \"risk_level\": \"low\",\n    \"main_risk_factors\": [\"credit risk due to high current exposure\", \"margin risk due to unusual discount percent\"],\n    \"recommended_actions\": [\"Monitor customer's credit history and limit usage\", \"Verify the reasonability of the requested discounts/margins\"],\n    \"manual_review_required\": true,\n    \"analysis_summary\": \"The sales order has a high credit risk due to the customer's current exposure exceeding their credit limit. Additionally, there is a margin risk due to an unusual discount percent on one of the items.\"\n}",
+      "timestamp": "2026-07-23T09:38:35.613551"
+    },
+    {
+      "type": "token_check",
+      "message": "Checking AI response for pseudonym tokens",
+      "data": {
+        "tokens_found": [],
+        "needs_depseudonymization": false
+      },
+      "timestamp": "2026-07-23T09:38:35.613564"
+    },
+    {
+      "type": "depseudonymize",
+      "message": "Restoring original identifiers in analysis results",
+      "data": null,
+      "timestamp": "2026-07-23T09:38:35.613566"
+    },
+    {
+      "type": "final_response",
+      "message": "Final business analysis with original identifiers restored",
+      "data": "{\n    \"risk_level\": \"low\",\n    \"main_risk_factors\": [\"credit risk due to high current exposure\", \"margin risk due to unusual discount percent\"],\n    \"recommended_actions\": [\"Monitor customer's credit history and limit usage\", \"Verify the reasonability of the requested discounts/margins\"],\n    \"manual_review_required\": true,\n    \"analysis_summary\": \"The sales order has a high credit risk due to the customer's current exposure exceeding their credit limit. Additionally, there is a margin risk due to an unusual discount percent on one of the items.\"\n}",
+      "timestamp": "2026-07-23T09:38:35.613571"
+    },
+    {
+      "type": "complete",
+      "message": "Analysis completed with data protection maintained throughout process",
+      "data": null,
+      "timestamp": "2026-07-23T09:38:35.613572"
+    }
+  ],
+  "data_protection": {
+    "sensitive_data_count": 7,
+    "pseudonymization_successful": true
+  }
+}
