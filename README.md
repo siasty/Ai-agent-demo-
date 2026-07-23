@@ -69,6 +69,40 @@ Tool.execute()                                ← core/tools.py
 pipeline_log returned to the page             ← page/ai_agent_demo/ai_agent_demo.js
 ```
 
+## Privacy-safe prompt flow
+
+The privacy boundary is explicit: the model never needs the raw user query or
+restored business identifiers. Local application code keeps the real Sales Order
+ID or Customer name for tool execution, while every Ollama prompt receives either
+a sanitized query, pseudonymized ERP data, or tokenized analysis.
+
+```mermaid
+flowchart TD
+    User["User query in Desk"] --> API["api.run_agent()"]
+    API --> Agent["BusinessAgent.run()"]
+
+    Agent --> Filter["Query privacy filter<br/>IDs and customer names -> placeholders"]
+    Filter --> ToolPrompt["Tool-selection prompt<br/>safe query only"]
+    ToolPrompt --> Select["Ollama selects tool"]
+
+    Agent --> Parser["Local parser keeps raw identifiers<br/>not sent to prompt"]
+    Select --> Parser
+    Parser --> Tool{"Selected tool"}
+
+    Tool -->|Sales Order| FetchSO["Fetch Sales Order data"]
+    Tool -->|Credit history| FetchCredit["Fetch Customer and Invoice data"]
+
+    FetchSO --> Pseudo["BusinessPseudonymizer"]
+    FetchCredit --> Pseudo
+    Pseudo --> AnalysisPrompt["Analysis prompt<br/>pseudonymized ERP data"]
+    AnalysisPrompt --> Analysis["Ollama analysis with tokens"]
+
+    Analysis --> FinalPrompt["Final formatting prompt<br/>tokenized analysis + numeric metrics"]
+    FinalPrompt --> SafeAnswer["Formatted answer with tokens"]
+    SafeAnswer --> Restore["Local depseudonymization"]
+    Restore --> UI["Final answer in UI"]
+```
+
 Detailed privacy and prompt flow map:
 [`docs/privacy_prompt_flow.md`](docs/privacy_prompt_flow.md)
 
