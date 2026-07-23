@@ -144,9 +144,36 @@ Detailed privacy and prompt flow map:
 
 ## Installation
 
+### Automated Linux demo
+
+On a clean Ubuntu/Debian machine with `systemd`, run the installer as a regular
+user with `sudo` access:
+
+```bash
+chmod +x install_demo_environment.sh
+./install_demo_environment.sh
+```
+
+It installs MariaDB, Redis, Node.js, Yarn, Bench, Frappe v15, ERPNext,
+Workspace Embedder, AI Agent Demo, spaCy, `en_core_web_sm`, and optionally
+Ollama with `llama3.2`. It creates `demo.localhost`, runs the tests, and starts
+the development server at `http://demo.localhost:8000`.
+
+The defaults are intended only for a local disposable demo:
+
+```bash
+# Install without Ollama, skip tests, and do not start bench automatically
+INSTALL_OLLAMA=0 RUN_TESTS=0 START_DEMO=0 ./install_demo_environment.sh
+
+# Override the site and Administrator password
+SITE_NAME=agent.localhost ADMIN_PASSWORD='change-me' ./install_demo_environment.sh
+```
+
+### Manual installation
+
 ```bash
 # 1. Optional local inference
-curl -fsSL https://ollama.ai/install.sh | sh
+curl -fsSL https://ollama.com/install.sh | sh
 ollama pull llama3.2
 ollama serve
 
@@ -155,6 +182,7 @@ cd /path/to/frappe-bench
 bench get-app --branch version-15 erpnext https://github.com/frappe/erpnext
 bench get-app --branch develop workspace_embedder https://github.com/siasty/workspace_embedder.git
 bench get-app https://github.com/siasty/Ai-agent-demo-
+bench setup requirements --python ai_agent_demo
 bench --site your-site.local install-app erpnext
 bench --site your-site.local install-app workspace_embedder
 bench --site your-site.local install-app ai_agent_demo
@@ -162,9 +190,10 @@ bench --site your-site.local migrate
 bench restart
 ```
 
-`bench get-app` installs `spacy` and the pinned `en_core_web_sm` wheel into the
-bench Python environment from `pyproject.toml`. `install_spacy.sh` is retained
-only as a manual repair command for an existing bench.
+`bench setup requirements --python ai_agent_demo` installs `spacy` and the
+pinned `en_core_web_sm` wheel into the bench Python environment from
+`pyproject.toml`. `install_spacy.sh` is retained only as a manual repair command
+for an existing bench.
 
 The `create_demo_data` patch runs automatically on migrate and seeds 6 customers, 10 electronic
 parts, and 6 sales orders (TechParts Inc. scenario).
