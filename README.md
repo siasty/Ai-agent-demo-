@@ -69,6 +69,9 @@ Tool.execute()                                ← core/tools.py
 pipeline_log returned to the page             ← page/ai_agent_demo/ai_agent_demo.js
 ```
 
+Detailed privacy and prompt flow map:
+[`docs/privacy_prompt_flow.md`](docs/privacy_prompt_flow.md)
+
 ## Requirements
 
 - Frappe v14+ (and ERPNext for Sales Order / Customer / Sales Invoice doctypes)

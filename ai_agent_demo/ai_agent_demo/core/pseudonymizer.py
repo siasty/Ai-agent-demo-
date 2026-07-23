@@ -199,6 +199,9 @@ class BusinessPseudonymizer:
 
         result = {}
 
+        # Reporting currency for every amount below - not sensitive, must survive
+        result["currency"] = customer_data.get("currency", "")
+
         # Customer information
         customer = customer_data.get("customer", {})
         result["customer"] = {
@@ -250,6 +253,9 @@ class BusinessPseudonymizer:
         self._used_manual_patterns = True
 
         result = {}
+
+        # Reporting currency for every amount below - not sensitive, must survive
+        result["currency"] = customer_data.get("currency", "")
 
         # Customer information
         customer = customer_data.get("customer", {})

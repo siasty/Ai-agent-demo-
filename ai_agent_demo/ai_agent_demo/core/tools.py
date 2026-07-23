@@ -196,20 +196,49 @@ class SalesOrderAnalyzer(BaseTool):
             return self._format_address(shipping_doc)
         return "Same as billing"
 
-    def _get_item_cost(self, item_code: str) -> float:
-        """Get item standard cost."""
-        cost = frappe.db.get_value("Item", item_code, "standard_rate")
-        return flt(cost) if cost else 0
+    def _get_item_cost(self, item_code: str) -> float | None:
+        """Get item cost for margin analysis.
 
-    def _calculate_margin(self, price: float, cost: float) -> float:
-        """Calculate margin percentage."""
-        if not price or not cost:
-            return 0
-        return ((price - cost) / price) * 100
+        Reads valuation_rate, the item's cost. The previous implementation read
+        standard_rate, which is the selling price, so every margin came out as
+        exactly zero and margin risk could never be detected.
+
+        Args:
+            item_code: The item to price.
+
+        Returns:
+            Unit cost, or None when no cost is recorded for the item.
+        """
+        cost = frappe.db.get_value("Item", item_code, "valuation_rate")
+        if cost:
+            return flt(cost)
+
+        cost = frappe.db.get_value("Item", item_code, "last_purchase_rate")
+        return flt(cost) if cost else None
+
+    def _calculate_margin(self, price: float, cost: float | None) -> float | None:
+        """Calculate margin percentage.
+
+        Returns None when the margin cannot be computed. Returning 0 would be
+        indistinguishable from a genuine zero-margin sale.
+        """
+        if not price or cost is None:
+            return None
+        return round(((price - cost) / price) * 100, 1)
 
     def _create_analysis_prompt(self, pseudonymized_data: dict) -> str:
         """Create analysis prompt for LLM."""
+        currency = pseudonymized_data.get("order", {}).get("currency") or "the reporting currency"
+
         return f"""Analyze the following sales order for commercial, credit, margin, and delivery risk.
+
+GROUNDING RULES - these override everything else:
+- Use ONLY the values present in the sales order data below. Do not invent numbers,
+  ratings or history that are not in the data.
+- All monetary amounts are in {currency}. Always write the amount followed by
+  "{currency}". Never use a currency symbol such as $ and never convert values.
+- A null or missing value means "not measurable", not zero and not a good result.
+- Cite the concrete figure behind every risk factor you report.
 
 Return ONLY a JSON response with this exact structure:
 {{
@@ -388,6 +417,29 @@ Focus on:
             return {
                 "sales_order_id": sales_order_id,
                 "analysis": final_response,
+                "analysis_for_llm": llm_response,
+                "pseudonym_reverse_mapping": dict(pseudonymizer.reverse_mapping),
+                # Numeric-only figures for the answer formatting step, mirroring the
+                # credit tool. Without them the formatter has no order value to quote
+                # and invents one. Nothing here identifies the customer.
+                "metrics": {
+                    "currency": raw_data["order"]["currency"],
+                    "order_total_net": raw_data["order"]["total_net"],
+                    "discount_percent": raw_data["order"]["discount_percent"],
+                    "historical_avg_discount_percent": raw_data["order"]["historical_avg_discount_percent"],
+                    "customer_credit_limit": raw_data["customer"]["credit_limit"],
+                    "customer_current_exposure": raw_data["customer"]["current_exposure"],
+                    "requested_delivery_date": raw_data["order"]["requested_delivery_date"],
+                    "item_count": len(raw_data["items"]),
+                    "min_item_margin_percent": min(
+                        (
+                            item["margin_percent"]
+                            for item in raw_data["items"]
+                            if item["margin_percent"] is not None
+                        ),
+                        default=None,
+                    ),
+                },
                 "pipeline_log": pipeline_log,
                 "data_protection": {
                     "sensitive_data_count": len(pseudonymizer.mapping),
@@ -398,6 +450,21 @@ Focus on:
         except Exception as e:
             log_step("error", f"Analysis failed: {str(e)}")
             return {"error": str(e), "pipeline_log": pipeline_log}
+
+
+# Credit risk thresholds. Any single breach promotes the customer to that level.
+HIGH_RISK_MAX_DAYS_OVERDUE = 60
+HIGH_RISK_UTILIZATION_PERCENT = 70
+HIGH_RISK_AVG_DELAY_DAYS = 30
+HIGH_RISK_PAYMENT_RATIO_PERCENT = 50
+
+MEDIUM_RISK_UTILIZATION_PERCENT = 40
+MEDIUM_RISK_AVG_DELAY_DAYS = 10
+
+# A low settled ratio is only meaningful once enough invoices have come due.
+# Below this count a new customer with one not-yet-due invoice would otherwise
+# be flagged high risk purely for not having paid something that is not owed yet.
+MIN_INVOICES_FOR_RATIO_RULE = 3
 
 
 class CustomerCreditAnalyzer(BaseTool):
@@ -458,44 +525,30 @@ class CustomerCreditAnalyzer(BaseTool):
                     currency
                 FROM `tabSales Invoice`
                 WHERE customer = %s
+                AND docstatus = 1
                 AND outstanding_amount > 0
                 ORDER BY due_date
                 LIMIT 20
             """, [customer_name], as_dict=True)
 
-            # Calculate payment statistics
-            payment_stats = frappe.db.sql("""
-                SELECT
-                    COUNT(*) as total_invoices,
-                    SUM(CASE WHEN outstanding_amount = 0 THEN 1 ELSE 0 END) as paid_invoices,
-                    AVG(DATEDIFF(modified, due_date)) as avg_payment_delay_days,
-                    SUM(outstanding_amount) as total_outstanding,
-                    SUM(grand_total) as total_12m_revenue
-                FROM `tabSales Invoice`
-                WHERE customer = %s
-                AND posting_date >= DATE_SUB(CURDATE(), INTERVAL 12 MONTH)
-            """, [customer_name], as_dict=True)[0]
+            credit_limit = flt(customer.credit_limits[0].credit_limit if customer.credit_limits else 0)
+            payment_history = self._calculate_payment_history(customer_name, outstanding_invoices, credit_limit)
 
-            # Build structured data
+            # Build structured data. Every monetary value below - credit limit,
+            # payment history, orders and invoices - is expressed in this currency.
             return {
+                "currency": self._get_company_currency(customer.name),
                 "customer": {
                     "name": customer.customer_name,
                     "tax_id": customer.tax_id if customer.tax_id else "N/A",
                     "email": primary_contact.email_id if primary_contact and primary_contact.email_id else "N/A",
                     "phone": primary_contact.mobile_no if primary_contact and primary_contact.mobile_no else "N/A",
                     "address": self._format_address(primary_address) if primary_address else "N/A",
-                    "credit_limit": flt(customer.credit_limits[0].credit_limit if customer.credit_limits else 0),
+                    "credit_limit": credit_limit,
                     "customer_group": customer.customer_group,
                     "territory": customer.territory
                 },
-                "payment_history": {
-                    "total_invoices_12m": int(payment_stats.total_invoices or 0),
-                    "paid_invoices_12m": int(payment_stats.paid_invoices or 0),
-                    "payment_ratio_percent": round((payment_stats.paid_invoices / payment_stats.total_invoices * 100) if payment_stats.total_invoices > 0 else 100, 1),
-                    "avg_payment_delay_days": round(payment_stats.avg_payment_delay_days or 0, 1),
-                    "total_outstanding": flt(payment_stats.total_outstanding or 0),
-                    "total_12m_revenue": flt(payment_stats.total_12m_revenue or 0)
-                },
+                "payment_history": payment_history,
                 "recent_orders": [
                     {
                         "sales_order_id": order.name,
@@ -525,6 +578,163 @@ class CustomerCreditAnalyzer(BaseTool):
         except Exception as e:
             return {"error": f"Error fetching customer data: {str(e)}"}
 
+    def _classify_risk_level(self, payment_history: dict) -> str:
+        """Classify credit risk from payment metrics using fixed thresholds.
+
+        Risk classification drives a credit decision, so it is computed in code
+        rather than delegated to the language model. The model narrates this
+        verdict; it does not produce it.
+
+        Args:
+            payment_history: Metrics dict from _calculate_payment_history.
+
+        Returns:
+            One of: unknown, high, medium, low.
+        """
+        if not payment_history.get("has_payment_history"):
+            return "unknown"
+
+        max_overdue = payment_history.get("max_days_overdue") or 0
+        utilization = payment_history.get("credit_utilization_percent")
+        avg_delay = payment_history.get("avg_payment_delay_days")
+        payment_ratio = payment_history.get("payment_ratio_percent")
+        total_invoices = payment_history.get("total_invoices_12m") or 0
+
+        # An unpaid invoice that is not yet due is not evidence of poor payment
+        ratio_is_meaningful = (
+            payment_ratio is not None and total_invoices >= MIN_INVOICES_FOR_RATIO_RULE
+        )
+
+        high_risk = (
+            max_overdue > HIGH_RISK_MAX_DAYS_OVERDUE
+            or (utilization is not None and utilization > HIGH_RISK_UTILIZATION_PERCENT)
+            or (avg_delay is not None and avg_delay > HIGH_RISK_AVG_DELAY_DAYS)
+            or (ratio_is_meaningful and payment_ratio < HIGH_RISK_PAYMENT_RATIO_PERCENT)
+        )
+        if high_risk:
+            return "high"
+
+        medium_risk = (
+            max_overdue > 0
+            or (utilization is not None and utilization > MEDIUM_RISK_UTILIZATION_PERCENT)
+            or (avg_delay is not None and avg_delay > MEDIUM_RISK_AVG_DELAY_DAYS)
+        )
+        if medium_risk:
+            return "medium"
+
+        return "low"
+
+    def _get_company_currency(self, customer_name: str) -> str:
+        """Return the reporting currency for the customer's transactions.
+
+        Demo documents are all issued in the company default currency, so a
+        single currency describes every amount in the analysis payload.
+
+        Args:
+            customer_name: Name (primary key) of the Customer document.
+
+        Returns:
+            Currency code, falling back to the company default.
+        """
+        currency = frappe.db.get_value(
+            "Sales Invoice",
+            {"customer": customer_name, "docstatus": 1},
+            "currency",
+        )
+        if currency:
+            return currency
+
+        company = frappe.defaults.get_global_default("company")
+        return frappe.db.get_value("Company", company, "default_currency") if company else "N/A"
+
+    def _calculate_payment_history(
+        self,
+        customer_name: str,
+        outstanding_invoices: list,
+        credit_limit: float,
+    ) -> dict:
+        """Calculate payment behaviour metrics over the last 12 months.
+
+        Payment delay is measured against actual Payment Entry posting dates, not
+        record modification timestamps. When a customer has no invoice history the
+        metrics are returned as None rather than as flattering defaults, so the
+        downstream analysis can distinguish "pays on time" from "never invoiced".
+
+        Args:
+            customer_name: Name (primary key) of the Customer document.
+            outstanding_invoices: Already fetched submitted invoices with a balance.
+            credit_limit: Approved credit limit, used for utilisation.
+
+        Returns:
+            Dict of payment metrics, including a has_payment_history flag.
+        """
+        invoice_stats = frappe.db.sql("""
+            SELECT
+                COUNT(*) as total_invoices,
+                SUM(CASE WHEN outstanding_amount = 0 THEN 1 ELSE 0 END) as paid_invoices,
+                SUM(outstanding_amount) as total_outstanding,
+                SUM(grand_total) as total_12m_revenue
+            FROM `tabSales Invoice`
+            WHERE customer = %s
+            AND docstatus = 1
+            AND posting_date >= DATE_SUB(CURDATE(), INTERVAL 12 MONTH)
+        """, [customer_name], as_dict=True)[0]
+
+        total_invoices = int(invoice_stats.total_invoices or 0)
+
+        if not total_invoices:
+            return {
+                "has_payment_history": False,
+                "data_note": "No submitted sales invoices in the last 12 months - payment behaviour is unknown.",
+                "total_invoices_12m": 0,
+                "paid_invoices_12m": 0,
+                "payment_ratio_percent": None,
+                "avg_payment_delay_days": None,
+                "max_days_overdue": 0,
+                "total_outstanding": 0.0,
+                "overdue_amount": 0.0,
+                "total_12m_revenue": 0.0,
+                "credit_utilization_percent": None,
+            }
+
+        # Real payment delay: settlement date from Payment Entry vs invoice due date
+        delay_stats = frappe.db.sql("""
+            SELECT
+                COUNT(*) as settled_allocations,
+                AVG(DATEDIFF(pe.posting_date, si.due_date)) as avg_payment_delay_days
+            FROM `tabPayment Entry Reference` per
+            INNER JOIN `tabPayment Entry` pe ON pe.name = per.parent AND pe.docstatus = 1
+            INNER JOIN `tabSales Invoice` si ON si.name = per.reference_name AND si.docstatus = 1
+            WHERE per.reference_doctype = 'Sales Invoice'
+            AND per.docstatus = 1
+            AND si.customer = %s
+            AND si.posting_date >= DATE_SUB(CURDATE(), INTERVAL 12 MONTH)
+        """, [customer_name], as_dict=True)[0]
+
+        settled = int(delay_stats.settled_allocations or 0)
+        avg_delay = round(delay_stats.avg_payment_delay_days, 1) if settled else None
+
+        overdue = [inv for inv in outstanding_invoices if inv.days_overdue and inv.days_overdue > 0]
+        overdue_amount = sum(flt(inv.outstanding_amount) for inv in overdue)
+        max_days_overdue = max((int(inv.days_overdue) for inv in overdue), default=0)
+
+        total_outstanding = flt(invoice_stats.total_outstanding or 0)
+        paid_invoices = int(invoice_stats.paid_invoices or 0)
+
+        return {
+            "has_payment_history": True,
+            "total_invoices_12m": total_invoices,
+            "paid_invoices_12m": paid_invoices,
+            "payment_ratio_percent": round(paid_invoices / total_invoices * 100, 1),
+            "avg_payment_delay_days": avg_delay,
+            "settled_invoice_count": settled,
+            "max_days_overdue": max_days_overdue,
+            "total_outstanding": total_outstanding,
+            "overdue_amount": flt(overdue_amount),
+            "total_12m_revenue": flt(invoice_stats.total_12m_revenue or 0),
+            "credit_utilization_percent": round(total_outstanding / credit_limit * 100, 1) if credit_limit else None,
+        }
+
     def _format_address(self, address_doc) -> str:
         """Format address document to string."""
         if not address_doc:
@@ -539,27 +749,52 @@ class CustomerCreditAnalyzer(BaseTool):
         return ", ".join(parts)
 
     def _create_credit_analysis_prompt(self, pseudonymized_data: dict) -> str:
-        """Create credit analysis prompt for LLM."""
+        """Create credit analysis prompt for LLM.
+
+        The prompt is grounded: it forbids inventing facts that are absent from
+        the payload and handles the "no invoices at all" case explicitly, so an
+        empty history is reported as unknown risk instead of excellent standing.
+        The risk level itself comes from _classify_risk_level, not from the model.
+        """
+        currency = pseudonymized_data.get("currency") or "the reporting currency"
+        risk_level = self._classify_risk_level(pseudonymized_data.get("payment_history", {}))
+
         return f"""Analyze the following customer's credit and payment history for financial risk assessment.
+
+GROUNDING RULES - these override everything else:
+- Use ONLY the values present in the customer data below. Do not invent numbers,
+  credit scores, ratings, or trends that are not in the data.
+- All monetary amounts are in {currency}. Never convert or relabel them.
+- If "has_payment_history" is false, the customer has NO invoice history. In that
+  case you MUST return "credit_risk_level": "unknown", state that payment behaviour
+  cannot be assessed, and recommend obtaining a payment history before extending
+  credit. Do NOT describe such a customer as reliable, debt free or low risk.
+- A null value means "not measurable", not zero and not a good result.
+- Never claim a positive trend from a single data point.
+
+RISK CLASSIFICATION - already decided, do not recompute:
+The rule engine classified this customer as "{risk_level}". Copy this value into
+"credit_risk_level" verbatim. Your task is to explain and support that verdict with
+the figures below, never to argue for a different level.
 
 Return ONLY a JSON response with this exact structure:
 {{
-    "credit_risk_level": "low|medium|high",
+    "credit_risk_level": "{risk_level}",
     "main_risk_factors": ["risk factor 1", "risk factor 2", ...],
     "recommended_actions": ["action 1", "action 2", ...],
-    "credit_limit_recommendation": "increase|maintain|decrease|suspend",
-    "analysis_summary": "brief summary of key findings"
+    "credit_limit_recommendation": "increase|maintain|decrease|suspend|insufficient_data",
+    "analysis_summary": "brief summary of key findings, citing concrete numbers"
 }}
 
 Customer data:
 {json.dumps(pseudonymized_data, indent=2, ensure_ascii=False)}
 
-Focus on:
-1. Payment behavior and delays
-2. Outstanding debt levels vs revenue
-3. Credit utilization vs limits
-4. Recent order patterns and trends
-5. Overall financial stability indicators"""
+Assess, citing the concrete figures behind each point:
+1. Payment behavior - avg_payment_delay_days, payment_ratio_percent
+2. Overdue exposure - overdue_amount, max_days_overdue
+3. Credit utilization - credit_utilization_percent against credit_limit
+4. Outstanding debt vs revenue - total_outstanding vs total_12m_revenue
+5. Recent order patterns and overall financial stability"""
 
     def execute(self, customer_name: str) -> dict:
         """Execute customer credit analysis with pseudonymization."""
@@ -688,6 +923,20 @@ Focus on:
             return {
                 "customer_name": customer_name,
                 "analysis": final_response,
+                "analysis_for_llm": llm_response,
+                "pseudonym_reverse_mapping": dict(pseudonymizer.reverse_mapping),
+                # Numeric-only metrics for the answer formatting step. The LLM JSON
+                # above carries a verdict but drops the underlying figures, which
+                # left the final answer unable to fill its sections. Nothing here
+                # identifies the customer, so the privacy guarantee is preserved.
+                "metrics": {
+                    "currency": raw_data.get("currency"),
+                    "credit_limit": raw_data["customer"]["credit_limit"],
+                    "rule_based_risk_level": self._classify_risk_level(raw_data["payment_history"]),
+                    "payment_history": raw_data["payment_history"],
+                    "outstanding_invoice_count": len(raw_data["outstanding_invoices"]),
+                    "recent_order_count": len(raw_data["recent_orders"]),
+                },
                 "pipeline_log": pipeline_log,
                 "data_protection": {
                     "sensitive_data_count": len(pseudonymizer.mapping),

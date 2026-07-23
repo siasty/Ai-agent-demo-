@@ -29,6 +29,7 @@ const TOOL_META = {
 const LOG_CFG = {
     // Agent loop
     input:                   { icon: "📥", color: "#0d6efd", bg: "#f0f7ff", title: "INPUT" },
+    query_privacy_filter:    { icon: "🛡️", color: "#20c997", bg: "#effcf7", title: "QUERY PRIVACY FILTER" },
     think:                   { icon: "💭", color: "#856404", bg: "#fffbef", title: "THINK (REASON)" },
     tool_select:             { icon: "🎯", color: "#4361ee", bg: "#f0f4ff", title: "TOOL SELECTION (ACT)" },
     tool_input:              { icon: "↘️", color: "#4361ee", bg: "#eef1ff", title: "INPUT PARAMETERS" },
