@@ -3,7 +3,12 @@
 This file maps where sensitive data is filtered, which prompts exist, and what
 each prompt receives. The key rule after the privacy fix is:
 
-> Raw user query and restored identifiers are not sent to Ollama prompts.
+> Raw user query and restored identifiers are not sent to LLM prompts.
+
+Every prompt uses the shared `core/llm_client.py::LLMClient`. The active transport
+comes from the System Manager-only `AI Agent LLM Settings` Single DocType:
+local Ollama uses `/api/generate`, Ollama Cloud uses native `/generate` with a
+Bearer API key, and public OpenAI-compatible APIs use `/chat/completions`.
 
 ## Graphical Flow
 
@@ -15,10 +20,10 @@ flowchart TD
     A --> QF[Query privacy filter]
     QF --> SQ[Safe query with placeholders]
     SQ --> P1[Prompt 1: tool selection]
-    P1 --> O1[Ollama: choose tool]
+    P1 --> C1[LLMClient: choose tool]
 
     A --> LP[Local parser on raw query]
-    O1 --> LP
+    C1 --> LP
     LP --> T{Selected tool}
 
     T -->|analyze_sales_order| SO[Fetch Sales Order from ERPNext]
@@ -33,22 +38,28 @@ flowchart TD
     SOD --> P2[Build complete Prompt 2 locally:<br/>sales-order risk analysis plus safe payload]
     CRD --> P3[Build complete Prompt 3 locally:<br/>credit analysis plus safe payload]
 
-    P2 --> O2[Single Ollama request:<br/>analysis returned with tokens]
-    P3 --> O3[Single Ollama request:<br/>analysis returned with tokens]
+    P2 --> O2[Single LLMClient request:<br/>analysis returned with tokens]
+    P3 --> O3[Single LLMClient request:<br/>analysis returned with tokens]
 
     O2 --> P4[Prompt 4: final sales-order formatting with tokens]
     O3 --> P5[Prompt 5: final credit formatting with tokens]
 
-    P4 --> FO[Ollama formatted answer with tokens]
+    P4 --> FO[Model-formatted answer with tokens]
     P5 --> FO
 
     FO --> R[Local depseudonymization]
     R --> UI[Final answer shown in UI]
+
+    CFG[AI Agent LLM Settings] --> TR[Active transport:<br/>local Ollama, Ollama Cloud,<br/>or OpenAI-compatible API]
+    C1 -. uses .-> TR
+    O2 -. uses .-> TR
+    O3 -. uses .-> TR
+    FO -. produced through .-> TR
 ```
 
 The safe ERP payload is not a separate model request. Application code embeds it
 in Prompt 2 or Prompt 3 first, then logs one `ai_prompt` event immediately before
-the corresponding Ollama request. The obsolete `ai_input_data` and empty
+the corresponding LLM request. The obsolete `ai_input_data` and empty
 `llm_analysis` events are no longer emitted.
 
 ## Recorded Credit Pipeline Events
@@ -86,8 +97,8 @@ flowchart TD
 | Prompt | Code location | Data passed to model | Privacy status |
 |---|---|---|---|
 | Tool selection | `core/agent.py::_create_tool_selection_prompt` | `safe_user_query` from `_create_safe_tool_selection_query` | Raw query is not sent. Sales Order IDs, resolved customer names, and NER-detected entities are replaced with placeholders. |
-| Sales-order analysis | `core/tools.py::SalesOrderAnalyzer._create_analysis_prompt` | `pseudonymized_data` from `BusinessPseudonymizer.pseudonymize_sales_order` | Sensitive ERP fields are tokenized before the prompt is created. |
-| Customer credit analysis | `core/tools.py::CustomerCreditAnalyzer._create_credit_analysis_prompt` | `pseudonymized_data` from `BusinessPseudonymizer.pseudonymize_customer_data` | Sensitive customer/contact fields are tokenized before the prompt is created. |
+| Sales-order analysis | `core/tools.py::SalesOrderAnalyzer._create_analysis_prompt` | `pseudonymized_data` from `BusinessPseudonymizer.pseudonymize_sales_order` | Sensitive ERP fields and the primary Sales Order ID are tokenized before the prompt is created. |
+| Customer credit analysis | `core/tools.py::CustomerCreditAnalyzer._create_credit_analysis_prompt` | `pseudonymized_data` from `BusinessPseudonymizer.pseudonymize_customer_data` | Sensitive customer/contact fields, nested Sales Order IDs, Sales Invoice IDs, and sales-representative names are tokenized before the prompt is created. |
 | Final sales-order answer | `core/agent.py::_create_sales_order_answer_prompt` | `analysis_for_llm` plus numeric-only `metrics` | The prompt receives tokenized analysis, not restored identifiers. |
 | Final credit answer | `core/agent.py::_create_credit_answer_prompt` | `analysis_for_llm` plus numeric-only `metrics` | The prompt receives tokenized analysis, not restored identifiers. |
 | Fallback final answer | `core/agent.py::_create_final_answer_prompt` | Generic tool result | Used only for unknown tools; current registered tools use the specific final prompts above. |

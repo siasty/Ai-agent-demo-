@@ -1,7 +1,8 @@
 # Frappe AI Agent Demo
 
-Educational demo of an AI agent running on a **local LLM (Ollama)** with **automatic sensitive-data
-pseudonymization** powered by spaCy NER. Built to show, step by step, how an agent can analyze
+Educational demo of an AI agent using either **local Ollama**, **Ollama Cloud**,
+or an **OpenAI-compatible public API**, with **automatic sensitive-data pseudonymization**
+powered by spaCy NER. Built to show, step by step, how an agent can analyze
 business data from ERPNext while keeping personal data out of the model prompt.
 
 ## What it demonstrates
@@ -10,9 +11,10 @@ business data from ERPNext while keeping personal data out of the model prompt.
 |---|---|
 | Tool selection | LLM picks one of two tools from a user query |
 | Sensitive-data detection | spaCy NER (`en_core_web_sm`) + custom regex (EMAIL, PHONE, SSN, IBAN, ZIPCODE, …) |
-| Pseudonymization | Consistent mapping: `"Jane Doe" → PERSON_01`, reversed before the answer is shown |
+| Pseudonymization | Consistent mapping: `"Jane Doe" → PERSON_01`, `SAL-ORD-* → SALES_ORDER_01`, reversed before the answer is shown |
 | Pipeline transparency | Every step (fetch → detect → pseudonymize → LLM → de-pseudonymize) is logged and rendered in the UI |
-| Local-only inference | All LLM calls go to `localhost:11434` (Ollama) — data never leaves the host |
+| Configurable inference | A System Manager switches the whole pipeline between local Ollama, native Ollama Cloud, and an OpenAI-compatible public API |
+| Secret handling | Public API keys use Frappe's encrypted `Password` storage and are never returned to the browser |
 
 ## Architecture (actual code layout)
 
@@ -26,13 +28,15 @@ ai_agent_demo/
 ├── config/
 │   └── desktop.py
 └── ai_agent_demo/
-    ├── api.py                     # whitelisted endpoints: get_agent_status, get_available_tools, run_agent
+    ├── api.py                     # agent and System Manager-only LLM settings endpoints
     ├── core/
-    │   ├── agent.py               # BusinessAgent — calls Ollama, parses tool selection
+    │   ├── agent.py               # BusinessAgent — selects tools and formats answers
+    │   ├── llm_client.py          # shared local Ollama / Ollama Cloud / OpenAI client
     │   ├── tools.py               # SalesOrderAnalyzer, CustomerCreditAnalyzer (subclasses of BaseTool)
     │   ├── pseudonymizer.py       # BusinessPseudonymizer — tokenizes detected entities
     │   └── ner_detector.py        # SpacyNERDetector — spaCy NER + custom regex
     ├── doctype/
+    │   ├── ai_agent_llm_settings/ # global Single DocType; System Manager only
     │   ├── agent_session/         # session metadata
     │   └── agent_log/             # one row per agent run
     └── page/
@@ -57,7 +61,7 @@ User query
 BusinessAgent.run()                           ← core/agent.py
    │  ├─ _create_safe_tool_selection_query
    │  ├─ _create_tool_selection_prompt
-   │  ├─ Ollama /api/generate (llama3.2)
+   │  ├─ LLMClient.generate (configured provider)
    │  └─ _parse_tool_selection (local ID extraction and validation)
    ▼
 Tool.execute()                                ← core/tools.py
@@ -65,11 +69,11 @@ Tool.execute()                                ← core/tools.py
    │  ├─ BusinessPseudonymizer
    │  │     └─ SpacyNERDetector.detect_entities    ← core/ner_detector.py
    │  ├─ build one complete prompt containing pseudonymized ERP data
-   │  ├─ Ollama /api/generate (single analysis request)
+   │  ├─ LLMClient.generate (single analysis request)
    │  └─ BusinessPseudonymizer.depseudonymize_text
    ▼
 BusinessAgent creates final formatting prompt
-   │  └─ Ollama /api/generate (tokenized analysis + numeric metrics)
+   │  └─ LLMClient.generate (tokenized analysis + numeric metrics)
    ▼
 pipeline_log returned to the page             ← page/ai_agent_demo/ai_agent_demo.js
 ```
@@ -81,7 +85,7 @@ not sent to the model or logged as a separate `ai_input_data` event before that 
 
 The privacy boundary is explicit: the model never needs the raw user query or
 restored business identifiers. Local application code keeps the real Sales Order
-ID or Customer name for tool execution, while every Ollama prompt receives either
+ID or Customer name for tool execution, while every LLM prompt receives either
 a sanitized query, pseudonymized ERP data, or tokenized analysis.
 
 ```mermaid
@@ -91,7 +95,10 @@ flowchart TD
 
     Agent --> Filter["Query privacy filter<br/>IDs and customer names -> placeholders"]
     Filter --> ToolPrompt["Tool-selection prompt<br/>safe query only"]
-    ToolPrompt --> Select["Ollama selects tool"]
+    Settings["AI Agent LLM Settings<br/>System Manager only"] --> Transport["Active transport<br/>Local: /api/generate<br/>Ollama Cloud: /generate<br/>OpenAI: /chat/completions"]
+    ToolPrompt --> SelectCall["LLMClient.generate<br/>tool selection"]
+    SelectCall --> Select["Model selects tool"]
+    SelectCall -. uses .-> Transport
 
     Agent --> Parser["Local parser keeps raw identifiers<br/>not sent to prompt"]
     Select --> Parser
@@ -100,15 +107,19 @@ flowchart TD
     Tool -->|Sales Order| FetchSO["Fetch Sales Order data"]
     Tool -->|Credit history| FetchCredit["Fetch Customer and Invoice data"]
 
-    FetchSO --> Pseudo["BusinessPseudonymizer<br/>replace identifiers with tokens"]
+    FetchSO --> Pseudo["BusinessPseudonymizer<br/>replace people, companies,<br/>addresses and ERP document IDs"]
     FetchCredit --> Pseudo
     Pseudo --> BuildPrompt["Build complete analysis prompt locally<br/>pseudonymized ERP payload embedded once"]
-    BuildPrompt --> AnalysisPrompt["AI PROMPT event<br/>single Ollama request"]
-    AnalysisPrompt --> Analysis["AI RESPONSE event<br/>analysis with tokens"]
+    BuildPrompt --> AnalysisPrompt["AI PROMPT event<br/>single LLM request"]
+    AnalysisPrompt --> AnalysisCall["LLMClient.generate<br/>risk analysis"]
+    AnalysisCall --> Analysis["AI RESPONSE event<br/>analysis with tokens"]
+    AnalysisCall -. uses .-> Transport
 
     Analysis --> TokenCheck["Local token check"]
     TokenCheck --> FinalPrompt["Final formatting prompt<br/>tokenized analysis + numeric metrics"]
-    FinalPrompt --> SafeAnswer["Ollama formatted answer with tokens"]
+    FinalPrompt --> FormatCall["LLMClient.generate<br/>answer formatting"]
+    FormatCall --> SafeAnswer["Model-formatted answer with tokens"]
+    FormatCall -. uses .-> Transport
     SafeAnswer --> Restore["Local depseudonymization"]
     Restore --> UI["Final answer in UI"]
 
@@ -125,7 +136,8 @@ Detailed privacy and prompt flow map:
 ## Requirements
 
 - Frappe v14+ (and ERPNext for Sales Order / Customer / Sales Invoice doctypes)
-- Ollama running locally with a chat model (`llama3.2` by default)
+- Ollama with a local model (`llama3.2` by default), Ollama Cloud, or an
+  OpenAI-compatible HTTPS Chat Completions endpoint and API key
 - Python `spacy>=3.7` + `en_core_web_sm` model
 
 ## Installation
@@ -151,6 +163,49 @@ The `create_demo_data` patch runs automatically on migrate and seeds 6 customers
 parts, and 6 sales orders (TechParts Inc. scenario).
 
 Open in the Desk: **Menu → AI Agent Demo**, or go directly to `/app/ai-agent-demo`.
+
+## LLM provider configuration
+
+Only users with the **System Manager** role can configure the provider:
+
+1. Open **AI Agent Demo** in Desk.
+2. Click **LLM Settings** in the page toolbar.
+3. Select **Local Ollama** or **Public API**.
+4. For **Public API**, choose **Ollama Native** or **OpenAI Compatible**, then
+   enter the provider URL, model, API key, and request timeout.
+5. Click **Test connection**. This sends the small prompt
+   `Reply with exactly: OK` and may incur a provider charge.
+6. Click **Save**. The selection applies to tool selection, tool analysis, and
+   final answer formatting.
+
+For Ollama Cloud, select **Ollama Native** and use
+`https://ollama.com/api`; the app sends `POST /generate` with a Bearer API key.
+For OpenAI, select **OpenAI Compatible** and use
+`https://api.openai.com/v1`; the app sends `POST /chat/completions`.
+Other providers work when they implement that compatible request and response
+format. Public URLs must use HTTPS. See the
+[Ollama API introduction](https://docs.ollama.com/api/introduction) and
+[authentication guide](https://docs.ollama.com/api/authentication).
+
+The key is stored in Frappe's encrypted password store. The settings endpoint
+returns only `api_key_set: true|false`; it never sends the key to JavaScript.
+Leaving the key field blank keeps the saved value. Use **Remove saved API key**
+to delete it explicitly. The page status verifies Ollama automatically, while a
+public API is shown as configured until **Test connection** is used, avoiding an
+automatic billable model call on every page load.
+
+For official Ollama Cloud, the status bar provides an **Ollama Usage** link to
+the provider dashboard. Ollama measures plan usage mainly by GPU time, model
+weight, request duration, and cached context rather than by a fixed token quota.
+Session limits reset every 5 hours and weekly limits every 7 days. Because the
+Ollama API does not expose the remaining plan allowance, the application does
+not estimate it from token counts. See the official
+[Ollama usage and plan description](https://ollama.com/pricing).
+
+The same privacy boundary applies to all providers. Before any analysis prompt,
+customer/contact fields and ERP document references such as Sales Order and
+Sales Invoice IDs are replaced with local tokens. Original identifiers are
+restored only after the final model response.
 
 ## Example queries
 

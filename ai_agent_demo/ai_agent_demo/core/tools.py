@@ -6,12 +6,12 @@ This module contains tools for analyzing business data with privacy protection.
 from __future__ import annotations
 
 import json
-import requests
 from datetime import datetime, timedelta
 
 import frappe
 from frappe.utils import flt, cint, getdate
 
+from .llm_client import LLMClient, LLMError
 from .pseudonymizer import BusinessPseudonymizer
 
 
@@ -57,9 +57,15 @@ def get_available_tools() -> list[dict]:
 class BaseTool:
     """Base class for AI agent tools."""
 
-    def __init__(self, name: str, description: str):
+    def __init__(
+        self,
+        name: str,
+        description: str,
+        llm_client: LLMClient | None = None,
+    ):
         self.name = name
         self.description = description
+        self.llm_client = llm_client or LLMClient()
 
     def execute(self, **kwargs) -> dict:
         """
@@ -90,10 +96,11 @@ class BaseTool:
 class SalesOrderAnalyzer(BaseTool):
     """Analyze sales orders for business risks with data protection."""
 
-    def __init__(self):
+    def __init__(self, llm_client: LLMClient | None = None):
         super().__init__(
             name="analyze_sales_order",
-            description="Analyze sales order for commercial, credit, margin, and delivery risks"
+            description="Analyze sales order for commercial, credit, margin, and delivery risks",
+            llm_client=llm_client,
         )
 
     def _fetch_sales_order_data(self, sales_order_id: str) -> dict:
@@ -261,28 +268,9 @@ Focus on:
     def _analyze_with_llm_prompt(self, prompt: str) -> str:
         """Send prompt to LLM for analysis."""
         try:
-            response = requests.post(
-                "http://localhost:11434/api/generate",
-                json={
-                    "model": "llama3.2",
-                    "prompt": prompt,
-                    "stream": False,
-                    "options": {
-                        "temperature": 0.1,
-                        "top_p": 0.9
-                    }
-                },
-                timeout=30
-            )
-
-            if response.status_code == 200:
-                result = response.json()
-                return result.get("response", "No response from LLM")
-            else:
-                return f"LLM API error: {response.status_code}"
-
-        except Exception as e:
-            return f"Error calling LLM: {str(e)}"
+            return self.llm_client.generate(prompt)
+        except LLMError as exc:
+            return f"Error calling LLM: {exc}"
 
     def _analyze_with_llm(self, pseudonymized_data: dict) -> str:
         """Send pseudonymized data to LLM for analysis (legacy method)."""
@@ -294,12 +282,13 @@ Focus on:
         pipeline_log = []
 
         def log_step(step_type: str, message: str, data=None):
-            pipeline_log.append({
+            entry = {
                 "type": step_type,
                 "message": message,
                 "data": data,
                 "timestamp": datetime.now().isoformat()
-            })
+            }
+            pipeline_log.append(entry)
 
         try:
             # Step 1: Fetch raw data from ERP
@@ -379,7 +368,11 @@ Focus on:
             llm_response = self._analyze_with_llm_prompt(analysis_prompt)
 
             # Show AI raw response
-            log_step("llm_response", "AI analysis completed - raw response from model", llm_response)
+            log_step(
+                "llm_response",
+                "AI analysis completed - raw response from model",
+                llm_response,
+            )
 
             # Check if response contains tokens
             tokens_in_response = [token for token in pseudonymizer.reverse_mapping.keys() if token in llm_response]
@@ -464,10 +457,11 @@ MIN_INVOICES_FOR_RATIO_RULE = 3
 class CustomerCreditAnalyzer(BaseTool):
     """Check customer credit history and risk indicators with pseudonymization."""
 
-    def __init__(self):
+    def __init__(self, llm_client: LLMClient | None = None):
         super().__init__(
             name="check_customer_credit_history",
-            description="Check customer payment history and credit risk with data protection"
+            description="Check customer payment history and credit risk with data protection",
+            llm_client=llm_client,
         )
 
     def _fetch_customer_data(self, customer_name: str) -> dict:
@@ -795,12 +789,13 @@ Assess, citing the concrete figures behind each point:
         pipeline_log = []
 
         def log_step(step_type: str, message: str, data=None):
-            pipeline_log.append({
+            entry = {
                 "type": step_type,
                 "message": message,
                 "data": data,
                 "timestamp": datetime.now().isoformat()
-            })
+            }
+            pipeline_log.append(entry)
 
         try:
             # Step 1: Fetch customer data from ERP
@@ -879,7 +874,11 @@ Assess, citing the concrete figures behind each point:
             llm_response = self._analyze_with_llm_prompt(analysis_prompt)
 
             # Show AI response
-            log_step("llm_response", "AI credit analysis completed - raw response from model", llm_response)
+            log_step(
+                "llm_response",
+                "AI credit analysis completed - raw response from model",
+                llm_response,
+            )
 
             # Check if response contains tokens
             tokens_in_response = [token for token in pseudonymizer.reverse_mapping.keys() if token in llm_response]
@@ -939,40 +938,18 @@ Assess, citing the concrete figures behind each point:
     def _analyze_with_llm_prompt(self, prompt: str) -> str:
         """Send prompt to LLM for credit analysis."""
         try:
-            response = requests.post(
-                "http://localhost:11434/api/generate",
-                json={
-                    "model": "llama3.2",
-                    "prompt": prompt,
-                    "stream": False,
-                    "options": {
-                        "temperature": 0.1,
-                        "top_p": 0.9
-                    }
-                },
-                timeout=30
-            )
-
-            if response.status_code == 200:
-                result = response.json()
-                return result.get("response", "No response from LLM")
-            else:
-                return f"LLM API error: {response.status_code}"
-
-        except Exception as e:
-            return f"Error calling LLM: {str(e)}"
+            return self.llm_client.generate(prompt)
+        except LLMError as exc:
+            return f"Error calling LLM: {exc}"
 
 
-# Tool registry
-AVAILABLE_TOOLS = [
-    SalesOrderAnalyzer(),
-    CustomerCreditAnalyzer()
-]
-
-
-def get_tool_by_name(name: str) -> BaseTool | None:
-    """Get tool instance by name."""
-    for tool in AVAILABLE_TOOLS:
-        if tool.name == name:
-            return tool
+def get_tool_by_name(
+    name: str,
+    llm_client: LLMClient | None = None,
+) -> BaseTool | None:
+    """Create a tool with the same LLM client used by the agent."""
+    if name == "analyze_sales_order":
+        return SalesOrderAnalyzer(llm_client=llm_client)
+    if name == "check_customer_credit_history":
+        return CustomerCreditAnalyzer(llm_client=llm_client)
     return None

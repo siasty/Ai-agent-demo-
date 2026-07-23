@@ -7,11 +7,11 @@ from __future__ import annotations
 
 import json
 import re
-import requests
 from typing import Dict, Any
 
 import frappe
 
+from .llm_client import LLMClient, LLMError
 from .pseudonymizer import BusinessPseudonymizer
 from .tools import get_available_tools, get_tool_by_name
 
@@ -32,35 +32,17 @@ CREDIT_CUSTOMER_PATTERNS = (
 class BusinessAgent:
     """AI Agent for business data analysis with privacy protection."""
 
-    def __init__(self, model_name: str = "llama3.2"):
-        self.model_name = model_name
+    def __init__(self, llm_client: LLMClient | None = None):
+        self.llm_client = llm_client or LLMClient()
+        self.model_name = self.llm_client.config.model
         self.available_tools = get_available_tools()
 
     def _call_llm(self, prompt: str) -> str:
-        """Call Ollama LLM with given prompt."""
+        """Call the configured LLM with the given prompt."""
         try:
-            response = requests.post(
-                "http://localhost:11434/api/generate",
-                json={
-                    "model": self.model_name,
-                    "prompt": prompt,
-                    "stream": False,
-                    "options": {
-                        "temperature": 0.1,
-                        "top_p": 0.9
-                    }
-                },
-                timeout=30
-            )
-
-            if response.status_code == 200:
-                result = response.json()
-                return result.get("response", "No response from LLM")
-            else:
-                return f"LLM API error: {response.status_code}"
-
-        except Exception as e:
-            return f"Error calling LLM: {str(e)}"
+            return self.llm_client.generate(prompt)
+        except LLMError as exc:
+            return f"Error calling LLM: {exc}"
 
     def _resolve_customer_name(self, candidate: str) -> str | None:
         """Resolve a name extracted from the query to an actual Customer record.
@@ -425,11 +407,12 @@ Use markdown headers and bullet points exactly as shown."""
         steps = []
 
         def log_step(step_type: str, message: str, data=None):
-            pipeline_log.append({
+            entry = {
                 "type": step_type,
                 "message": message,
                 "data": data
-            })
+            }
+            pipeline_log.append(entry)
 
         try:
             # Step 1: Analyze query and select tool
@@ -457,11 +440,18 @@ Use markdown headers and bullet points exactly as shown."""
                     "pipeline_log": pipeline_log
                 }
 
-            log_step("tool_select", f"Selected tool: {tool_selection['tool_name']}", tool_selection['tool_name'])
+            log_step(
+                "tool_select",
+                f"Selected tool: {tool_selection['tool_name']}",
+                tool_selection['tool_name'],
+            )
             log_step("tool_input", "Tool parameters", tool_selection['parameters'])
 
             # Step 2: Execute tool
-            tool = get_tool_by_name(tool_selection['tool_name'])
+            tool = get_tool_by_name(
+                tool_selection['tool_name'],
+                llm_client=self.llm_client,
+            )
             if not tool:
                 log_step("tool_error", f"Tool {tool_selection['tool_name']} not found")
                 return {

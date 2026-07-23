@@ -67,8 +67,19 @@ class AIAgentDemoPage {
         this.page = page;
         this.$el = $(page.main);
         this.session = null;
+        this._setup_actions();
         this._render();
         this._load_status();
+    }
+
+    _setup_actions() {
+        if (!(frappe.user_roles || []).includes("System Manager")) return;
+
+        this.page.set_secondary_action(
+            __("LLM Settings"),
+            () => this._open_llm_settings(),
+            "setting-gear"
+        );
     }
 
     // -----------------------------------------------------------------------
@@ -80,8 +91,32 @@ class AIAgentDemoPage {
 
   <div class="ad-status-bar">
     <span id="ad-dot" class="ad-dot"></span>
-    <span id="ad-status-txt">Checking Ollama&hellip;</span>
+    <span id="ad-status-txt">Checking LLM provider&hellip;</span>
     <span id="ad-model-list"></span>
+    <a
+      id="ad-provider-usage-btn"
+      class="ad-settings-btn"
+      href="#"
+      target="_blank"
+      rel="noopener noreferrer"
+      title="Open the provider usage dashboard"
+      aria-label="Open the provider usage dashboard"
+      style="display:none"
+    >
+      ${frappe.utils.icon("external-link", "sm")}
+      <span>Ollama Usage</span>
+    </a>
+    <button
+      id="ad-llm-settings-btn"
+      class="ad-settings-btn"
+      type="button"
+      title="Configure LLM provider and model"
+      aria-label="Configure LLM provider and model"
+      style="display:none"
+    >
+      ${frappe.utils.icon("setting-gear", "sm")}
+      <span>LLM Settings</span>
+    </button>
   </div>
 
   <div class="ad-grid">
@@ -155,6 +190,7 @@ class AIAgentDemoPage {
         });
 
         this.$el.find("#ad-run-btn").on("click", () => this._run());
+        this.$el.find("#ad-llm-settings-btn").on("click", () => this._open_llm_settings());
         this.$el.find("#ad-query").on("keydown", (e) => { if (e.key === "Enter") this._run(); });
 
         this.$el.on("click", ".ad-chip", (e) => {
@@ -163,23 +199,243 @@ class AIAgentDemoPage {
     }
 
     // -----------------------------------------------------------------------
-    // Ollama status
+    // LLM provider configuration and status
     // -----------------------------------------------------------------------
     _load_status() {
         frappe.call({
             method: "ai_agent_demo.ai_agent_demo.api.get_agent_status",
             callback: (r) => {
                 const s = r.message || {};
-                if (s.ollama_available) {
-                    this.$el.find("#ad-dot").addClass("online");
-                    this.$el.find("#ad-status-txt").text("Ollama: connected");
-                    this.$el.find("#ad-model-list").text(`Models: ${(s.models || []).slice(0, 3).join(", ")}`);
+                const $dot = this.$el.find("#ad-dot").removeClass("online offline");
+                const provider = s.provider_label || s.provider || "LLM";
+                const $usage = this.$el.find("#ad-provider-usage-btn");
+                if (s.usage_url) {
+                    $usage.attr("href", s.usage_url).show();
                 } else {
-                    this.$el.find("#ad-dot").addClass("offline");
-                    this.$el.find("#ad-status-txt").html("Ollama offline – <code>ollama serve</code> + <code>ollama pull llama3.2</code>");
+                    $usage.removeAttr("href").hide();
+                }
+                this.$el.find("#ad-llm-settings-btn").toggle(Boolean(s.can_configure));
+                if (s.available) {
+                    $dot.addClass("online");
+                    const state = s.connection_verified === false ? "configured" : "ready";
+                    this.$el.find("#ad-status-txt").text(`${provider}: ${state}`);
+                    this.$el.find("#ad-model-list").text(s.model ? `Model: ${s.model}` : "");
+                } else {
+                    $dot.addClass("offline");
+                    this.$el.find("#ad-status-txt").text(s.message || `${provider}: unavailable`);
+                    this.$el.find("#ad-model-list").text("");
                 }
                 this._load_tools();
             },
+        });
+    }
+
+    _open_llm_settings() {
+        frappe.call({
+            method: "ai_agent_demo.ai_agent_demo.api.get_llm_settings",
+            freeze: true,
+            freeze_message: __("Loading LLM settings..."),
+            callback: (r) => this._show_llm_settings_dialog(r.message || {}),
+        });
+    }
+
+    _show_llm_settings_dialog(settings) {
+        const keyDescription = settings.api_key_set
+            ? __("A key is already saved. Leave this field blank to keep it.")
+            : __("Required when Public API is active.");
+        const keyStatus = settings.api_key_set
+            ? `<div class="ad-key-status saved">${frappe.utils.icon("lock", "sm")}<span>${__("API key saved securely")}</span></div>`
+            : `<div class="ad-key-status missing">${frappe.utils.icon("unlock", "sm")}<span>${__("No API key saved")}</span></div>`;
+
+        let dialog = new frappe.ui.Dialog({
+            title: __("LLM Settings"),
+            size: "large",
+            fields: [
+                {
+                    fieldname: "provider_type",
+                    fieldtype: "Select",
+                    label: __("Provider"),
+                    options: "Local Ollama\nPublic API",
+                    default: settings.provider_type || "Local Ollama",
+                    reqd: 1,
+                },
+                {
+                    fieldname: "request_timeout",
+                    fieldtype: "Int",
+                    label: __("Request Timeout (seconds)"),
+                    default: settings.request_timeout || 30,
+                    reqd: 1,
+                },
+                {
+                    fieldname: "local_section",
+                    fieldtype: "Section Break",
+                    label: __("Local Ollama"),
+                    depends_on: "eval:doc.provider_type == 'Local Ollama'",
+                },
+                {
+                    fieldname: "local_base_url",
+                    fieldtype: "Data",
+                    label: __("Local Base URL"),
+                    default: settings.local_base_url || "http://localhost:11434",
+                    depends_on: "eval:doc.provider_type == 'Local Ollama'",
+                    mandatory_depends_on: "eval:doc.provider_type == 'Local Ollama'",
+                },
+                {
+                    fieldname: "local_model",
+                    fieldtype: "Data",
+                    label: __("Local Model"),
+                    default: settings.local_model || "llama3.2",
+                    depends_on: "eval:doc.provider_type == 'Local Ollama'",
+                    mandatory_depends_on: "eval:doc.provider_type == 'Local Ollama'",
+                },
+                {
+                    fieldname: "public_section",
+                    fieldtype: "Section Break",
+                    label: __("Public API"),
+                    depends_on: "eval:doc.provider_type == 'Public API'",
+                },
+                {
+                    fieldname: "public_api_format",
+                    fieldtype: "Select",
+                    label: __("API Format"),
+                    options: "Ollama Native\nOpenAI Compatible",
+                    default: settings.public_api_format || "Ollama Native",
+                    depends_on: "eval:doc.provider_type == 'Public API'",
+                    mandatory_depends_on: "eval:doc.provider_type == 'Public API'",
+                },
+                {
+                    fieldname: "public_base_url",
+                    fieldtype: "Data",
+                    label: __("Public API Base URL"),
+                    default: settings.public_base_url || "https://ollama.com/api",
+                    description: __("The app adds /generate for Ollama or /chat/completions for OpenAI."),
+                    depends_on: "eval:doc.provider_type == 'Public API'",
+                    mandatory_depends_on: "eval:doc.provider_type == 'Public API'",
+                },
+                {
+                    fieldname: "public_model",
+                    fieldtype: "Data",
+                    label: __("Public API Model"),
+                    default: settings.public_model || "",
+                    description: __("Use the exact provider model ID. For Ollama Cloud, for example: gpt-oss:120b. Local tags such as llama3.2:latest may not exist in Cloud."),
+                    depends_on: "eval:doc.provider_type == 'Public API'",
+                    mandatory_depends_on: "eval:doc.provider_type == 'Public API'",
+                },
+                {
+                    fieldname: "api_key_status",
+                    fieldtype: "HTML",
+                    options: keyStatus,
+                    depends_on: "eval:doc.provider_type == 'Public API'",
+                },
+                {
+                    fieldname: "api_key",
+                    fieldtype: "Password",
+                    label: __("API Key"),
+                    description: keyDescription,
+                    placeholder: settings.api_key_set
+                        ? __("Saved - enter a new key only to replace it")
+                        : __("Enter API key"),
+                    depends_on: "eval:doc.provider_type == 'Public API'",
+                },
+                {
+                    fieldname: "clear_api_key",
+                    fieldtype: "Check",
+                    label: __("Remove saved API key"),
+                    default: 0,
+                    depends_on: "eval:doc.provider_type == 'Public API'",
+                },
+            ],
+            primary_action_label: __("Save"),
+            primary_action: (values) => this._save_llm_settings(dialog, values),
+            secondary_action_label: __("Test connection"),
+            secondary_action: () => {
+                const values = dialog.get_values();
+                if (values) this._test_llm_settings(dialog, values);
+            },
+        });
+        dialog.show();
+        dialog.get_field("public_api_format").$input.on(
+            "change.ai_agent_llm",
+            () => this._sync_public_base_url(dialog)
+        );
+    }
+
+    _sync_public_base_url(dialog) {
+        const format = dialog.get_value("public_api_format");
+        const currentUrl = dialog.get_value("public_base_url");
+        const ollamaUrl = "https://ollama.com/api";
+        const openaiUrl = "https://api.openai.com/v1";
+
+        if (format === "Ollama Native" && (!currentUrl || currentUrl === openaiUrl)) {
+            dialog.set_value("public_base_url", ollamaUrl);
+        } else if (format === "OpenAI Compatible" && (!currentUrl || currentUrl === ollamaUrl)) {
+            dialog.set_value("public_base_url", openaiUrl);
+        }
+    }
+
+    _llm_settings_args(values) {
+        return {
+            provider_type: values.provider_type,
+            request_timeout: values.request_timeout,
+            local_base_url: values.local_base_url || "",
+            local_model: values.local_model || "",
+            public_api_format: values.public_api_format || "Ollama Native",
+            public_base_url: values.public_base_url || "",
+            public_model: values.public_model || "",
+            api_key: values.api_key || "",
+            clear_api_key: values.clear_api_key ? 1 : 0,
+        };
+    }
+
+    _set_llm_dialog_busy(dialog, busy) {
+        dialog.get_primary_btn().prop("disabled", busy);
+        dialog.get_secondary_btn().prop("disabled", busy);
+    }
+
+    _save_llm_settings(dialog, values) {
+        this._set_llm_dialog_busy(dialog, true);
+        frappe.call({
+            method: "ai_agent_demo.ai_agent_demo.api.save_llm_settings",
+            type: "POST",
+            args: this._llm_settings_args(values),
+            callback: (r) => {
+                dialog.hide();
+                const saved = Boolean((r.message || {}).api_key_set);
+                frappe.show_alert({
+                    message: saved
+                        ? __("LLM settings and API key saved")
+                        : __("LLM settings saved"),
+                    indicator: "green",
+                });
+                this._load_status();
+            },
+            always: () => this._set_llm_dialog_busy(dialog, false),
+        });
+    }
+
+    _test_llm_settings(dialog, values) {
+        this._set_llm_dialog_busy(dialog, true);
+        frappe.call({
+            method: "ai_agent_demo.ai_agent_demo.api.test_llm_settings",
+            type: "POST",
+            args: this._llm_settings_args(values),
+            freeze: true,
+            freeze_message: __("Testing LLM connection..."),
+            callback: (r) => {
+                const result = r.message || {};
+                frappe.msgprint({
+                    title: __("Connection successful"),
+                    indicator: "green",
+                    message: __("{0} / {1}: {2}", [
+                        frappe.utils.escape_html(
+                            `${result.provider || ""} (${result.api_format || ""})`
+                        ),
+                        frappe.utils.escape_html(result.model || ""),
+                        frappe.utils.escape_html(result.response_preview || "OK"),
+                    ]),
+                });
+            },
+            always: () => this._set_llm_dialog_busy(dialog, false),
         });
     }
 
@@ -669,12 +925,18 @@ function _inject_styles() {
 .ad-grid{display:grid;grid-template-columns:260px 1fr;gap:18px;margin-top:14px}
 
 /* status bar */
-.ad-status-bar{display:flex;align-items:center;gap:10px;padding:10px 16px;background:#f8f9fa;border:1px solid #e9ecef;border-radius:8px;font-size:13px}
+.ad-status-bar{display:flex;align-items:center;flex-wrap:wrap;gap:10px;padding:10px 16px;background:#f8f9fa;border:1px solid #e9ecef;border-radius:8px;font-size:13px}
 .ad-dot{width:10px;height:10px;border-radius:50%;background:#ffc107;flex-shrink:0;animation:ad-pulse 1.4s ease-in-out infinite}
 .ad-dot.online{background:#28a745;animation:none}
 .ad-dot.offline{background:#dc3545;animation:none}
 @keyframes ad-pulse{0%,100%{opacity:1}50%{opacity:.3}}
 #ad-model-list{margin-left:auto;color:#6c757d;font-size:11px}
+.ad-settings-btn{display:inline-flex;align-items:center;gap:6px;padding:5px 9px;background:#fff;color:#495057;border:1px solid #d8dde3;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;text-decoration:none}
+.ad-settings-btn:hover{background:#eef1ff;color:#4361ee;border-color:#aebcf8}
+.ad-settings-btn:focus-visible{outline:2px solid #4361ee;outline-offset:2px}
+.ad-key-status{display:flex;align-items:center;gap:7px;padding:7px 0;font-size:12px;font-weight:600}
+.ad-key-status.saved{color:#198754}
+.ad-key-status.missing{color:#b45309}
 
 /* karty */
 .ad-card{background:#fff;border:1px solid #e9ecef;border-radius:8px;padding:14px;margin-bottom:12px}

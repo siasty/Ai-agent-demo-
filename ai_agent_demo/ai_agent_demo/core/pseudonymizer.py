@@ -46,7 +46,9 @@ class BusinessPseudonymizer:
             "product": 0,
             "organization": 0,
             "location": 0,
-            "financial": 0
+            "financial": 0,
+            "sales_order": 0,
+            "invoice": 0,
         }
 
         # Initialize NER detector if available and requested
@@ -98,6 +100,14 @@ class BusinessPseudonymizer:
     def _pseudonymize_person_name(self, name: str) -> str:
         """Pseudonymize person names."""
         return self._generate_token("person", name)
+
+    def _pseudonymize_document_id(self, value: str, data_type: str) -> str:
+        """Replace an ERP document ID before a payload reaches any LLM."""
+        if not value:
+            return ""
+        if data_type not in {"sales_order", "invoice"}:
+            raise ValueError("Unsupported ERP document identifier type.")
+        return self._generate_token(data_type, value)
 
     def _pseudonymize_email(self, email: str) -> str:
         """Pseudonymize email addresses."""
@@ -223,13 +233,16 @@ class BusinessPseudonymizer:
         result["recent_orders"] = []
         for order in recent_orders:
             result["recent_orders"].append({
-                "sales_order_id": order.get("sales_order_id", ""),  # Keep order IDs
+                "sales_order_id": self._pseudonymize_document_id(
+                    order.get("sales_order_id", ""),
+                    "sales_order",
+                ),
                 "date": order.get("date", ""),  # Dates are safe
                 "amount": order.get("amount"),  # Numeric - safe
                 "currency": order.get("currency", ""),  # Safe
                 "discount_percent": order.get("discount_percent"),  # Safe
                 "payment_terms": order.get("payment_terms", ""),  # Business term - safe
-                "sales_rep": self.pseudonymize_text_auto(order.get("sales_rep", ""))
+                "sales_rep": self._pseudonymize_person_name(order.get("sales_rep", ""))
             })
 
         # Outstanding invoices
@@ -237,7 +250,10 @@ class BusinessPseudonymizer:
         result["outstanding_invoices"] = []
         for invoice in outstanding:
             result["outstanding_invoices"].append({
-                "invoice_id": invoice.get("invoice_id", ""),  # Keep invoice IDs
+                "invoice_id": self._pseudonymize_document_id(
+                    invoice.get("invoice_id", ""),
+                    "invoice",
+                ),
                 "issue_date": invoice.get("issue_date", ""),  # Safe
                 "due_date": invoice.get("due_date", ""),  # Safe
                 "amount": invoice.get("amount"),  # Safe
@@ -278,7 +294,10 @@ class BusinessPseudonymizer:
         result["recent_orders"] = []
         for order in recent_orders:
             result["recent_orders"].append({
-                "sales_order_id": order.get("sales_order_id", ""),
+                "sales_order_id": self._pseudonymize_document_id(
+                    order.get("sales_order_id", ""),
+                    "sales_order",
+                ),
                 "date": order.get("date", ""),
                 "amount": order.get("amount"),
                 "currency": order.get("currency", ""),
@@ -292,7 +311,10 @@ class BusinessPseudonymizer:
         result["outstanding_invoices"] = []
         for invoice in outstanding:
             result["outstanding_invoices"].append({
-                "invoice_id": invoice.get("invoice_id", ""),
+                "invoice_id": self._pseudonymize_document_id(
+                    invoice.get("invoice_id", ""),
+                    "invoice",
+                ),
                 "issue_date": invoice.get("issue_date", ""),
                 "due_date": invoice.get("due_date", ""),
                 "amount": invoice.get("amount"),
@@ -309,8 +331,10 @@ class BusinessPseudonymizer:
 
         result = {}
 
-        # Copy non-sensitive data as-is
-        result["sales_order_id"] = sales_order.get("sales_order_id")
+        result["sales_order_id"] = self._pseudonymize_document_id(
+            sales_order.get("sales_order_id", ""),
+            "sales_order",
+        )
 
         # Use spaCy to pseudonymize ALL text fields automatically
         customer = sales_order.get("customer", {})
@@ -366,8 +390,10 @@ class BusinessPseudonymizer:
 
         result = {}
 
-        # Copy non-sensitive data as-is
-        result["sales_order_id"] = sales_order.get("sales_order_id")
+        result["sales_order_id"] = self._pseudonymize_document_id(
+            sales_order.get("sales_order_id", ""),
+            "sales_order",
+        )
 
         # Manual field mapping approach
         customer = sales_order.get("customer", {})
@@ -566,4 +592,3 @@ class BusinessPseudonymizer:
                 result = result.replace(original, pseudonym)
 
         return result
-
